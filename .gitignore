@@ -1,0 +1,33 @@
+/docs
+
+# Dependencias (incluyendo las de los workspaces)
+node_modules/
+
+# Construcción y caché de Turborepo / Bundlers
+dist/
+build/
+.turbo/
+.next/
+out/
+coverage/
+
+# Bases de datos y archivos de Shadow Workspace
+.metamorph/
+*.db
+*.sqlite
+*.sqlite3
+
+# Variables de entorno y secretos
+.env
+.env.*.local
+.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Archivos del Sistema Operativo
+.DS_Store
+Thumbs.db

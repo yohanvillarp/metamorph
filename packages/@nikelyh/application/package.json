@@ -1,0 +1,10 @@
+{
+  "name": "@nikelyh/application",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "type": "module",
+  "dependencies": {
+    "@mozaik-ai/core": "^4.0.5",
+    "@nikelyh/domain": "*"
+  }
+}

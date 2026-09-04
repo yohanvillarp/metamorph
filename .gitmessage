@@ -1,0 +1,30 @@
+# <type>[optional scope]: <description in imperative mood (max 50 chars)>
+#
+# [Optional body: explains WHAT and WHY, not HOW. Wrap at 72 chars]
+#
+# [Optional footer: References to issues, breaking changes (e.g., Closes #123)]
+#
+# --- ALLOWED TYPES (Conventional Commits) ---
+# feat:     A new feature for the user / project
+# fix:      A bug fix
+# docs:     Documentation only changes
+# style:    Formatting, missing semi-colons, etc (no code logic changes)
+# refactor: A code change that neither fixes a bug nor adds a feature
+# perf:     A code change that improves performance
+# test:     Adding missing tests or correcting existing tests
+# chore:    Updating dependencies, build scripts, configurations
+# build:    Changes that affect the build system or external dependencies
+#
+# --- RULES ---
+# 1. Use the imperative mood ("add" not "added" or "adds")
+# 2. Do not capitalize the first letter of the description
+# 3. No dot (.) at the end of the first line
+# 4. Separate subject from body with a blank line
+#
+# --- EXAMPLE ---
+# feat(cli): add rollback command
+# 
+# Implements the ability to undo the Shadow Workspace 
+# by executing `metamorph rollback`, returning to the original snapshot.
+#
+# Closes #45

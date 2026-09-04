@@ -1,0 +1,24 @@
+{
+  "name": "@nikelyh/cli",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "bin": {
+    "metamorph": "./dist/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "commander": "^15.0.0",
+    "chalk": "^6.0.0",
+    "ora": "^9.4.1",
+    "@nikelyh/application": "*",
+    "@nikelyh/infrastructure": "*"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.13"
+  }
+}

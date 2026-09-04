@@ -1,0 +1,21 @@
+{
+  "name": "metamorph-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/@nikelyh/*"
+  ],
+  "packageManager": "npm@10.8.2",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "husky": "^9.0.11"
+  }
+}
