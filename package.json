@@ -1,6 +1,7 @@
 {
   "name": "metamorph-monorepo",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/@nikelyh/*"

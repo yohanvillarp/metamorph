@@ -1,0 +1,10 @@
+# Normaliza los saltos de línea para Mac, Linux y Windows
+* text=auto eol=lf
+
+# Excepciones para archivos binarios
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
