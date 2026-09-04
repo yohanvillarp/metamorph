@@ -1,3 +1,5 @@
+*Read this in other languages: [English](CONTRIBUTING.md)*
+
 # Guía de Contribución para Metamorph
 
 ¡Gracias por tu interés en contribuir a Metamorph! Para mantener el orden y la calidad del código, seguimos un flujo de trabajo estricto.
