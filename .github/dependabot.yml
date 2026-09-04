@@ -3,6 +3,7 @@ updates:
   # Analiza y actualiza dependencias de NPM en todo el Monorepo
   - package-ecosystem: "npm"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
     commit-message:
@@ -10,11 +11,12 @@ updates:
       include: "scope"
     ignore:
       - dependency-name: "*"
-        update-types: ["version-update:semver-major"] # Evitar breaking changes automáticos (opcional)
+        update-types: ["version-update:semver-major"] # Evitar breaking changes automáticos
 
   # Mantiene actualizadas las Actions del propio CI
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
     commit-message:
