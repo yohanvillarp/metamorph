@@ -85,9 +85,21 @@ export class MigrationIntegrator {
   }
 
   private copyShadowToTarget(shadowDir: string, targetPath: string) {
-    const items = fs.readdirSync(shadowDir);
-    for (const item of items) {
-      if (item === 'node_modules' || item === '.git' || item === '.metamorph') continue;
+    const ignoredDirs = ['node_modules', '.git', '.metamorph'];
+    
+    // 1. Clean the target directory first to ensure deleted files are removed
+    if (fs.existsSync(targetPath)) {
+      const targetItems = fs.readdirSync(targetPath);
+      for (const item of targetItems) {
+        if (ignoredDirs.includes(item)) continue;
+        fs.removeSync(path.join(targetPath, item));
+      }
+    }
+
+    // 2. Copy everything from the shadow directory
+    const shadowItems = fs.readdirSync(shadowDir);
+    for (const item of shadowItems) {
+      if (ignoredDirs.includes(item)) continue;
       
       const itemSrc = path.join(shadowDir, item);
       const itemDest = path.join(targetPath, item);

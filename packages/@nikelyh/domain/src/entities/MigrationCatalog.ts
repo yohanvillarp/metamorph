@@ -4,6 +4,11 @@ export interface MigrationCatalogEntry {
   description: string;
   architecturalRules: string[];
   examples?: { before: string; after: string; description: string }[];
+  filesToDelete?: string[];
+  dependenciesToRemove?: string[];
+  dependenciesToAdd?: Record<string, string>;
+  devDependenciesToRemove?: string[];
+  devDependenciesToAdd?: Record<string, string>;
 }
 
 export const MigrationCatalog: MigrationCatalogEntry[] = [
@@ -11,6 +16,11 @@ export const MigrationCatalog: MigrationCatalogEntry[] = [
     source: 'nestjs',
     target: 'express',
     description: 'Migration from NestJS framework to a plain Express application structure.',
+    filesToDelete: ['nest-cli.json', 'tsconfig.build.json'],
+    dependenciesToRemove: ['@nestjs/common', '@nestjs/core', '@nestjs/platform-express', 'reflect-metadata', 'rxjs'],
+    dependenciesToAdd: { 'express': '^4.18.2' },
+    devDependenciesToRemove: ['@nestjs/cli', '@nestjs/schematics', '@nestjs/testing', '@types/express', '@types/supertest', 'source-map-support', 'supertest'],
+    devDependenciesToAdd: { '@types/express': '^4.17.17' },
     architecturalRules: [
       'Remove all NestJS decorators (@Module, @Controller, @Injectable, @Get, @Post, etc.).',
       'Remove all NestJS core imports (e.g., from "@nestjs/common" or "@nestjs/core").',
