@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { FileCode2, UserCircle2, CheckCircle2, Play, Search } from 'lucide-react';
+import { FileCode2, UserCircle2, CheckCircle2, Play, Search, Wrench } from 'lucide-react';
 
 export const SwarmSwimlanes = ({ events }: { events: any[] }) => {
   // Aggregate events by file path
@@ -10,6 +10,7 @@ export const SwarmSwimlanes = ({ events }: { events: any[] }) => {
       mapperId?: string;
       workerId?: string;
       reviewerId?: string;
+      isRejected?: boolean;
     }>();
 
     // Process oldest to newest so we don't overwrite final states with older ones
@@ -33,9 +34,14 @@ export const SwarmSwimlanes = ({ events }: { events: any[] }) => {
       } else if (name.includes('migrat') && !name.includes('started')) {
         file.workerId = pid;
         file.stage = 'reviewing';
-      } else if (name.includes('review') || name.includes('approve') || name.includes('reject')) {
+        file.isRejected = false;
+      } else if (name.includes('review') || name.includes('approve')) {
         file.reviewerId = pid;
         file.stage = 'approved';
+      } else if (name.includes('reject')) {
+        file.reviewerId = pid;
+        file.stage = 'migrating'; // Bounce back to worker
+        file.isRejected = true;
       }
     });
 
@@ -81,9 +87,12 @@ export const SwarmSwimlanes = ({ events }: { events: any[] }) => {
             {/* Migrating Column */}
             <div className="p-4 border-r-4 border-neo-border relative">
               {['migrating', 'reviewing', 'approved'].includes(file.stage) && (
-                <div className="animate-in zoom-in spin-in-1 duration-300 w-full h-full min-h-[80px] bg-blue-200 border-4 border-blue-500 p-3 flex flex-col justify-center items-center text-center neo-card shadow-[4px_4px_0px_0px_rgba(59,130,246,1)]">
-                  <span className="font-black uppercase text-blue-900 tracking-wider">Worker</span>
-                  <span className="font-mono text-[10px] text-blue-800 mt-1 truncate w-full px-2" title={file.workerId}>{file.workerId?.split('-').pop()?.substring(0,8) || 'working...'}</span>
+                <div className={`animate-in zoom-in spin-in-1 duration-300 w-full h-full min-h-[80px] p-3 flex flex-col justify-center items-center text-center neo-card ${file.isRejected && file.stage === 'migrating' ? 'bg-red-200 border-4 border-red-500 shadow-[4px_4px_0px_0px_rgba(239,68,68,1)]' : 'bg-blue-200 border-4 border-blue-500 shadow-[4px_4px_0px_0px_rgba(59,130,246,1)]'}`}>
+                  <span className={`font-black uppercase tracking-wider flex items-center gap-1 ${file.isRejected && file.stage === 'migrating' ? 'text-red-900' : 'text-blue-900'}`}>
+                    {file.isRejected && file.stage === 'migrating' ? <Wrench size={14}/> : null}
+                    {file.isRejected && file.stage === 'migrating' ? 'REPAIRING' : 'WORKER'}
+                  </span>
+                  <span className={`font-mono text-[10px] mt-1 truncate w-full px-2 ${file.isRejected && file.stage === 'migrating' ? 'text-red-800' : 'text-blue-800'}`} title={file.workerId}>{file.workerId?.split('-').pop()?.substring(0,8) || 'working...'}</span>
                 </div>
               )}
             </div>
