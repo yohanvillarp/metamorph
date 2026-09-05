@@ -4,7 +4,7 @@ import { createMapperAgent } from './agents/MapperAgent';
 import { createWorkerAgent } from './agents/WorkerAgent';
 import { createReviewerAgent } from './agents/ReviewerAgent';
 
-import { Tool, createAgent, SituationSpecification } from '@mozaik-ai/core';
+import { Tool, createAgent, SituationSpecification, supportedModels } from '@mozaik-ai/core';
 
 /**
  * Bootstraps the Mozaik Application Layer.
@@ -14,7 +14,7 @@ import { Tool, createAgent, SituationSpecification } from '@mozaik-ai/core';
 export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = []) {
   // 1. Initialize the global Mozaik runtime with our SQLite repository
   initializeRuntime({
-    state: new MetamorphState(repository),
+    state: new MetamorphState(repository)
   });
 
   // 1.5. Add Telemetry Logger Agent to intercept ALL events and write to DB
@@ -75,3 +75,4 @@ export * from './runtime';
 export * from './agents/MapperAgent';
 export * from './agents/WorkerAgent';
 export * from './agents/ReviewerAgent';
+export * from './MigrationRunner';

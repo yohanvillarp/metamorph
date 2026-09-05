@@ -39,7 +39,9 @@ const mapFilesProcessor = {
     const scanDir = (dir: string) => {
       if (!fs.existsSync(dir)) return;
       const files = fs.readdirSync(dir);
+      const ignoredDirs = ['node_modules', 'dist', 'build', 'out', 'coverage', '.next'];
       for (const file of files) {
+        if (ignoredDirs.includes(file) || file.startsWith('.')) continue;
         const fullPath = path.join(dir, file);
         if (fs.statSync(fullPath).isDirectory()) {
           scanDir(fullPath);
@@ -50,8 +52,15 @@ const mapFilesProcessor = {
     };
     scanDir(shadowDir);
 
+    const runtime = resolveRuntime();
+    const repository = runtime.state.repository;
+
     for (const discoveredFile of filesToMigrate) {
       console.log(`[MapperAgent] Discovered file: ${discoveredFile}`);
+      
+      // Register in the database as pending immediately so the UI knows the total tasks
+      await repository.updateTaskStatus(payload.planId, discoveredFile, 'pending' as any);
+
       // Fire the event to the Mozaik bus so the WorkerAgent wakes up
       sendEvent(
         {
