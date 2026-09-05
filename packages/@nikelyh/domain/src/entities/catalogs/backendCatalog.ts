@@ -1,17 +1,6 @@
-export interface MigrationCatalogEntry {
-  source: string;
-  target: string;
-  description: string;
-  architecturalRules: string[];
-  examples?: { before: string; after: string; description: string }[];
-  filesToDelete?: string[];
-  dependenciesToRemove?: string[];
-  dependenciesToAdd?: Record<string, string>;
-  devDependenciesToRemove?: string[];
-  devDependenciesToAdd?: Record<string, string>;
-}
+import { MigrationCatalogEntry } from './types';
 
-export const MigrationCatalog: MigrationCatalogEntry[] = [
+export const backendCatalog: MigrationCatalogEntry[] = [
   {
     source: 'nestjs',
     target: 'express',
@@ -318,12 +307,3 @@ export class UsersController {
     ]
   }
 ];
-
-/**
- * Helper to find a catalog entry.
- */
-export function findMigrationCatalogEntry(source: string, target: string): MigrationCatalogEntry | undefined {
-  return MigrationCatalog.find(
-    entry => entry.source.toLowerCase() === source.toLowerCase() && entry.target.toLowerCase() === target.toLowerCase()
-  );
-}

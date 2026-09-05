@@ -1,7 +1,7 @@
 // Entities
 export * from './entities/MigrationProfile';
 export * from './entities/MigrationPlan';
-export * from './entities/MigrationCatalog';
+export * from './entities/catalogs';
 
 // Ports
 export * from './ports/StateRepository';
