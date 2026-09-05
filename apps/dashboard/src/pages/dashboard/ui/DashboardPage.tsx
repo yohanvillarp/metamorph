@@ -18,6 +18,9 @@ export const DashboardPage = () => {
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
 
+  const [isApplying, setIsApplying] = useState(false);
+  const [applyResult, setApplyResult] = useState<{message?: string, error?: string} | null>(null);
+
   const fetchData = async () => {
     try {
       const [plansRes, eventsRes] = await Promise.all([
@@ -46,9 +49,46 @@ export const DashboardPage = () => {
       await fetch(`${API_BASE}/api/migrations/reset`, {
         method: 'POST',
       });
+      setApplyResult(null);
       await fetchData();
     } catch (err) {
       console.error('Failed to reset:', err);
+    }
+  };
+
+  const handleApplyMigration = async () => {
+    if (!latestPlan) return;
+    setIsApplying(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/migrations/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runId: latestPlan.runId,
+          targetPath: latestPlan.targetPath 
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setApplyResult({ message: data.message });
+    } catch (err: any) {
+      setApplyResult({ error: err.message });
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const handleDiscardMigration = async () => {
+    if (!latestPlan) return;
+    try {
+      await fetch(`${API_BASE}/api/migrations/rollback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId: latestPlan.runId })
+      });
+      handleResetMigration();
+    } catch (err) {
+      console.error('Failed to discard:', err);
     }
   };
 
@@ -157,6 +197,31 @@ export const DashboardPage = () => {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {isFinished && (
+                <div className="flex items-center gap-2 mr-2 border-r-2 border-neo-border pr-6">
+                  {applyResult ? (
+                    <span className="font-bold text-sm bg-neo-primary text-neo-primary-text px-3 py-1">
+                      {applyResult.message || applyResult.error}
+                    </span>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={handleApplyMigration}
+                        disabled={isApplying}
+                        className="bg-green-400 font-black text-sm uppercase px-4 py-2 border-2 border-neo-border hover:bg-green-500 transition-colors shadow-[4px_4px_0px_0px_var(--neo-text)] active:translate-y-1 active:translate-x-1 active:shadow-none"
+                      >
+                        {isApplying ? 'Applying...' : 'Apply Migration'}
+                      </button>
+                      <button 
+                        onClick={handleDiscardMigration}
+                        className="bg-red-400 font-black text-sm uppercase px-4 py-2 border-2 border-neo-border hover:bg-red-500 transition-colors text-white active:translate-y-1 active:translate-x-1 active:shadow-none"
+                      >
+                        Discard
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
               <button 
                 onClick={handleResetMigration}
                 className="neo-btn font-black text-sm uppercase px-4 py-2 flex items-center gap-2 hover:bg-neo-primary hover:text-neo-bg transition-colors"

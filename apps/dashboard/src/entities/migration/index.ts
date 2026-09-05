@@ -21,6 +21,7 @@ export interface DetectedTech {
 
 export interface MigrationPlan {
   id: string;
+  runId: string;
   sourceFramework: string;
   targetFramework: string;
   targetPath: string;
