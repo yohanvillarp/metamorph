@@ -3,13 +3,14 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import 'dotenv/config';
-import { resolve } from 'path';
-import { randomUUID } from 'crypto';
 
-import { SQLiteStateStore, createReadFileTool, createWriteFileTool } from '@nikelyh/infrastructure';
-import { bootstrapMetamorph, sendEvent, join } from '@nikelyh/application';
-import { SemanticEventName, SemanticEventPayloads, MigrationPlan } from '@nikelyh/domain';
-import { ShadowWorkspace } from './utils/ShadowWorkspace';
+import {
+  SQLiteStateStore,
+  createReadFileTool,
+  createWriteFileTool,
+  createApiServer,
+} from '@nikelyh/infrastructure';
+import { MigrationRunner } from '@nikelyh/application';
 
 const program = new Command();
 
@@ -17,6 +18,8 @@ program
   .name('metamorph')
   .description('AI-powered technology migration tool using Mozaik Agents')
   .version('1.0.0');
+
+// ─── RUN COMMAND ───────────────────────────────────────────
 
 program
   .command('run <path>')
@@ -28,107 +31,62 @@ program
     console.log(chalk.gray(`Target: ${targetPath} | ${options.from} -> ${options.to}\n`));
 
     if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-      console.log(chalk.yellow(`⚠️ WARNING: No LLM API key detected in env. Inference will fail.\n`));
+      console.log(chalk.yellow(`⚠️ WARNING: No LLM API key detected.\n`));
     }
 
-    const spinner = ora('Initializing Shadow Workspace...').start();
+    const spinner = ora('Initializing...').start();
     try {
-      const workspace = new ShadowWorkspace();
-      const runId = `run_${Date.now()}`;
-      
-      const shadowPath = workspace.cloneDirectory(targetPath, runId);
-      spinner.succeed(`Shadow Workspace created at: ${shadowPath}`);
-
-      spinner.start('Initializing Database and Event Bus...');
       const store = new SQLiteStateStore('.metamorph');
-      
-      const planId = `plan_${randomUUID()}`;
-      const plan: MigrationPlan = {
-        id: planId,
-        profile: { source: options.from, target: options.to },
-        tasks: [{ filePath: shadowPath, status: 'pending' }], // Note: Mapper will expand this later
-        createdAt: new Date(),
-      };
-      await store.savePlan(plan);
-
       const tools = [createReadFileTool(), createWriteFileTool()];
-      bootstrapMetamorph(store, tools);
+      const runner = new MigrationRunner(store, tools);
 
-      const { createHuman } = await import('@mozaik-ai/core');
-      const human = createHuman({ name: 'System', capabilities: [], handlers: [] });
-      join(human);
+      const result = await runner.startMigration({
+        targetPath,
+        from: options.from,
+        to: options.to,
+      });
 
-      spinner.succeed('Infrastructure ready.');
-
-      console.log(chalk.green(`\n📡 Dispatching Migration Event to the swarm...`));
-      sendEvent(
-        {
-          type: SemanticEventName.MIGRATION_STARTED,
-          producerId: human.getId(),
-          occurredAt: new Date(),
-          payload: {
-            planId: planId,
-            profile: plan.profile,
-            shadowWorkspacePath: shadowPath,
-          } as SemanticEventPayloads.MigrationStarted,
-        },
-        human.getId()
-      );
-
-      console.log(chalk.blue(`\n⏳ Agents are now working in the background...`));
-      console.log(chalk.gray(`(Waiting for 20 seconds for agents to complete the migration)`));
+      spinner.succeed(`Migration dispatched! Plan: ${result.planId}`);
+      console.log(chalk.gray(`Shadow: ${result.shadowPath}`));
+      console.log(chalk.blue(`\n⏳ Agents are now working...`));
 
       await new Promise((resolve) => setTimeout(resolve, 20000));
       console.log(chalk.green(`\n✅ Migration simulation finished.`));
       process.exit(0);
-
     } catch (error: any) {
-      spinner.fail(`Migration failed to start: ${error.message}`);
+      spinner.fail(`Migration failed: ${error.message}`);
       process.exit(1);
     }
   });
 
+// ─── UI COMMAND ────────────────────────────────────────────
+
 program
   .command('ui')
-  .description('Start the Metamorph Dashboard UI server')
-  .option('-p, --port <number>', 'Port to run the UI server on', '3000')
+  .description('Start the Metamorph Dashboard API server')
+  .option('-p, --port <number>', 'Port for the API server', '3000')
   .action(async (options) => {
     const port = parseInt(options.port, 10);
-    const spinner = ora('Starting Metamorph UI server...').start();
+    const spinner = ora('Starting Metamorph API server...').start();
     try {
-      const express = (await import('express')).default;
-      const cors = (await import('cors')).default;
-
-      const app = express();
-      app.use(cors());
-      app.use(express.json());
-
       const store = new SQLiteStateStore('.metamorph');
+      const tools = [createReadFileTool(), createWriteFileTool()];
+      const runner = new MigrationRunner(store, tools);
 
-      app.get('/api/plans', async (req, res) => {
-        try {
-          const plans = await store.getAllPlans();
-          res.json(plans);
-        } catch (error: any) {
-          res.status(500).json({ error: error.message });
-        }
-      });
-
-      app.get('/api/events', async (req, res) => {
-        try {
-          const events = await store.getEvents();
-          res.json(events);
-        } catch (error: any) {
-          res.status(500).json({ error: error.message });
-        }
-      });
+      const app = await createApiServer(store, runner);
 
       app.listen(port, () => {
-        spinner.succeed(`Metamorph Dashboard API running on http://localhost:${port}`);
-        console.log(chalk.blue(`\nIn a separate terminal, run React dashboard to connect to this API.`));
+        spinner.succeed(
+          `Metamorph API running on http://localhost:${port}`
+        );
+        console.log(chalk.blue(`\nEndpoints available:`));
+        console.log(chalk.gray(`  GET  /api/plans`));
+        console.log(chalk.gray(`  GET  /api/events`));
+        console.log(chalk.gray(`  POST /api/migrations/start`));
+        console.log(chalk.gray(`  POST /api/migrations/rollback`));
       });
     } catch (error: any) {
-      spinner.fail(`Failed to start UI server: ${error.message}`);
+      spinner.fail(`Failed to start: ${error.message}`);
       process.exit(1);
     }
   });
