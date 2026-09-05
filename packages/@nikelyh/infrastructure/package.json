@@ -4,8 +4,9 @@
   "main": "src/index.ts",
   "type": "module",
   "dependencies": {
-    "ts-morph": "^28.0.0",
-    "@nikelyh/domain": "*"
+    "@mozaik-ai/core": "^4.0.5",
+    "@nikelyh/domain": "*",
+    "ts-morph": "^28.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0"

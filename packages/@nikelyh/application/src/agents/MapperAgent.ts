@@ -27,7 +27,7 @@ const mapFilesProcessor = {
     
     // In a real scenario, this agent would scan the folder tree and AST.
     // For now, we simulate discovering one file and publishing the event.
-    const discoveredFile = 'src/index.ts';
+    const discoveredFile = 'scratch/dummy-express.ts';
     console.log(`[MapperAgent] Discovered file: ${discoveredFile}`);
 
     // Fire the event to the Mozaik bus so the WorkerAgent wakes up

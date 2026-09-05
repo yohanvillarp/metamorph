@@ -1,31 +1,37 @@
-import { SQLiteStateStore } from '../packages/@nikelyh/infrastructure/src/db/SQLiteStateStore';
+import 'dotenv/config';
+import { SQLiteStateStore, createReadFileTool, createWriteFileTool } from '../packages/@nikelyh/infrastructure/src/index';
 import { bootstrapMetamorph, sendEvent, join } from '../packages/@nikelyh/application/src/index';
 import { SemanticEventName, SemanticEventPayloads, MigrationPlan } from '../packages/@nikelyh/domain/src/index';
 
 /**
  * Integration Test Script:
- * 1. Instantiates Infrastructure (SQLite)
+ * 1. Instantiates Infrastructure (SQLite & AST Tools)
  * 2. Instantiates Application (Mozaik Agents)
  * 3. Fires a MIGRATION_STARTED event
- * 4. Observes if MapperAgent and WorkerAgent react and mutate the database.
+ * 4. Observes if MapperAgent and WorkerAgent react and mutate the database and file.
  */
 async function run() {
+  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    console.warn('⚠️ WARNING: No LLM API key detected in env. Inference will fail.');
+  }
+
   console.log('--- Phase 1: Setup ---');
   const store = new SQLiteStateStore('.metamorph');
   
   // Seed the DB with a plan to migrate
-  const planId = 'integration_plan_001';
+  const planId = 'integration_plan_002';
   const dummyPlan: MigrationPlan = {
     id: planId,
-    profile: { source: 'react', target: 'vue' },
-    tasks: [{ filePath: 'src/index.ts', status: 'pending' }],
+    profile: { source: 'express', target: 'fastify', rules: ['Change `res.send` to `reply.send`', 'Change `app.get` types if necessary'] },
+    tasks: [{ filePath: 'scratch/dummy-express.ts', status: 'pending' }],
     createdAt: new Date(),
   };
   await store.savePlan(dummyPlan);
 
+  const tools = [createReadFileTool(), createWriteFileTool()];
+
   console.log('--- Phase 2: Mozaik Bootstrap ---');
-  // Pass the store into the Application layer
-  bootstrapMetamorph(store);
+  bootstrapMetamorph(store, tools);
 
   const { createHuman } = await import('@mozaik-ai/core');
   const human = createHuman({ name: 'System', capabilities: [], handlers: [] });
@@ -46,8 +52,8 @@ async function run() {
     human.getId()
   );
   
-  // Wait a little bit for the reactive event loop to process
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  console.log('[Main] Event sent. Waiting 15 seconds for inference to complete...');
+  await new Promise((resolve) => setTimeout(resolve, 15000));
 
   console.log('--- Phase 4: Assertions ---');
   const recovered = await store.getPlan(planId);
