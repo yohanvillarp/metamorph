@@ -4,6 +4,7 @@ import { createMapperAgent } from './agents/MapperAgent';
 import { createWorkerAgent } from './agents/WorkerAgent';
 import { createReviewerAgent } from './agents/ReviewerAgent';
 import { createPackageManagerAgent } from './agents/PackageManagerAgent';
+import { createReporterAgent } from './agents/ReporterAgent';
 
 import { Tool, createAgent, SituationSpecification, supportedModels } from '@mozaik-ai/core';
 
@@ -58,14 +59,16 @@ export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = 
   const worker = createWorkerAgent(tools);
   const reviewer = createReviewerAgent(tools);
   const packageManager = createPackageManagerAgent();
+  const reporter = createReporterAgent();
 
   // 3. Connect them to the Event Bus
   join(mapper);
   join(worker);
   join(reviewer);
   join(packageManager);
+  join(reporter);
 
-  console.log(`[App] Mozaik initialized. Agents joined: Mapper, Worker, Reviewer, PackageManager`);
+  console.log(`[App] Mozaik initialized. Agents joined: Mapper, Worker, Reviewer, PackageManager, Reporter`);
 
   return {
     mapperId: mapper.getId(),
@@ -79,4 +82,5 @@ export * from './agents/MapperAgent';
 export * from './agents/WorkerAgent';
 export * from './agents/ReviewerAgent';
 export * from './agents/PackageManagerAgent';
+export * from './agents/ReporterAgent';
 export * from './MigrationRunner';
