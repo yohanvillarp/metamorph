@@ -57,57 +57,39 @@ const managePackagesProcessor = {
       }
     }
 
-    // 2. Manage dependencies in package.json
+    // 2. Manage dependencies safely using npm commands
     const packageJsonPath = path.join(shadowDir, 'package.json');
     if (fs.existsSync(packageJsonPath)) {
-      try {
-        const pkgData = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-        let modified = false;
+      const { execSync } = require('child_process');
+      const execOpts = { cwd: shadowDir, stdio: 'inherit' as const };
 
+      try {
         // Remove old dependencies
-        if (catalogEntry.dependenciesToRemove && pkgData.dependencies) {
-          for (const dep of catalogEntry.dependenciesToRemove) {
-            if (pkgData.dependencies[dep]) {
-              delete pkgData.dependencies[dep];
-              console.log(`[PackageManagerAgent] Removed dependency: ${dep}`);
-              modified = true;
-            }
-          }
-        }
-        if (catalogEntry.devDependenciesToRemove && pkgData.devDependencies) {
-          for (const dep of catalogEntry.devDependenciesToRemove) {
-            if (pkgData.devDependencies[dep]) {
-              delete pkgData.devDependencies[dep];
-              console.log(`[PackageManagerAgent] Removed devDependency: ${dep}`);
-              modified = true;
-            }
-          }
+        let toRemove = [];
+        if (catalogEntry.dependenciesToRemove) toRemove.push(...catalogEntry.dependenciesToRemove);
+        if (catalogEntry.devDependenciesToRemove) toRemove.push(...catalogEntry.devDependenciesToRemove);
+        
+        if (toRemove.length > 0) {
+          console.log(`[PackageManagerAgent] Uninstalling: ${toRemove.join(' ')}`);
+          execSync(`npm uninstall ${toRemove.join(' ')}`, execOpts);
         }
 
         // Add new dependencies
-        if (catalogEntry.dependenciesToAdd) {
-          pkgData.dependencies = pkgData.dependencies || {};
-          for (const [dep, version] of Object.entries(catalogEntry.dependenciesToAdd)) {
-            pkgData.dependencies[dep] = version;
-            console.log(`[PackageManagerAgent] Added dependency: ${dep}@${version}`);
-            modified = true;
-          }
-        }
-        if (catalogEntry.devDependenciesToAdd) {
-          pkgData.devDependencies = pkgData.devDependencies || {};
-          for (const [dep, version] of Object.entries(catalogEntry.devDependenciesToAdd)) {
-            pkgData.devDependencies[dep] = version;
-            console.log(`[PackageManagerAgent] Added devDependency: ${dep}@${version}`);
-            modified = true;
-          }
+        if (catalogEntry.dependenciesToAdd && Object.keys(catalogEntry.dependenciesToAdd).length > 0) {
+          const deps = Object.entries(catalogEntry.dependenciesToAdd).map(([pkg, ver]) => `${pkg}@${ver}`);
+          console.log(`[PackageManagerAgent] Installing dependencies: ${deps.join(' ')}`);
+          execSync(`npm install ${deps.join(' ')}`, execOpts);
         }
 
-        if (modified) {
-          fs.writeFileSync(packageJsonPath, JSON.stringify(pkgData, null, 2), 'utf-8');
-          console.log(`[PackageManagerAgent] Successfully updated package.json`);
+        if (catalogEntry.devDependenciesToAdd && Object.keys(catalogEntry.devDependenciesToAdd).length > 0) {
+          const devDeps = Object.entries(catalogEntry.devDependenciesToAdd).map(([pkg, ver]) => `${pkg}@${ver}`);
+          console.log(`[PackageManagerAgent] Installing devDependencies: ${devDeps.join(' ')}`);
+          execSync(`npm install -D ${devDeps.join(' ')}`, execOpts);
         }
+
+        console.log(`[PackageManagerAgent] Successfully updated dependencies via npm.`);
       } catch (err) {
-        console.error(`[PackageManagerAgent] Error modifying package.json:`, err);
+        console.error(`[PackageManagerAgent] Error running npm commands:`, err);
       }
     } else {
       console.log(`[PackageManagerAgent] No package.json found at ${packageJsonPath}`);

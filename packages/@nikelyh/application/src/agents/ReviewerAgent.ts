@@ -186,6 +186,40 @@ const reviewFileProcessor = {
     console.log(`[DEBUG:ReviewerAgent:${reviewerId}] tempAgent joined the runtime`);
 
     const runtime = resolveRuntime();
+    
+    // --- Pre-LLM Static Syntax Check ---
+    if (payload.filePath.endsWith('.ts') || payload.filePath.endsWith('.tsx')) {
+      try {
+        const { Project } = await import('ts-morph');
+        const tsProject = new Project();
+        const sf = tsProject.addSourceFileAtPath(payload.filePath);
+        const diagnostics = sf.getPreEmitDiagnostics();
+        const syntaxErrors = diagnostics.filter(d => d.getCode() >= 1000 && d.getCode() < 2000);
+        
+        if (syntaxErrors.length > 0) {
+          console.error(`[ReviewerAgent:${reviewerId}] Syntax Error in ${payload.filePath}. Rejecting immediately.`);
+          const { sendEvent } = await import('../runtime');
+          sendEvent({
+            type: SemanticEventName.FILE_REJECTED,
+            producerId: tempAgent.getId(),
+            occurredAt: new Date(),
+            payload: { 
+              planId: payload.planId, 
+              filePath: payload.filePath, 
+              errors: syntaxErrors.map(d => `TS${d.getCode()}: ${d.getMessageText()}`) 
+            },
+          }, tempAgent.getId());
+          
+          leave(tempAgent);
+          resolve();
+          return;
+        }
+      } catch (e) {
+        console.warn(`[ReviewerAgent:${reviewerId}] Failed to run syntax check:`, e);
+      }
+    }
+    // -----------------------------------
+
     const plan = await runtime.state.repository.getPlan(payload.planId);
     let prompt = `Review the following file migration: ${payload.filePath}\n`;
     

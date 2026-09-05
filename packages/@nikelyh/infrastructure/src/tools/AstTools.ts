@@ -159,19 +159,20 @@ export function createDeleteFileTool(): Tool {
     },
     strict: true,
     invoke: async ({ filePath }: { filePath: string }) => {
-      const { unlinkSync, existsSync } = await import('node:fs');
+      const { renameSync, existsSync } = await import('node:fs');
       if (!existsSync(filePath)) {
         return { error: `File not found: ${filePath}` };
       }
       
-      unlinkSync(filePath);
+      const obsoletePath = `${filePath}.obsolete`;
+      renameSync(filePath, obsoletePath);
       
       const sourceFile = project.getSourceFile(filePath);
       if (sourceFile) {
         project.removeSourceFile(sourceFile);
       }
       
-      return { success: true, message: `File deleted at ${filePath}.` };
+      return { success: true, message: `File marked as obsolete at ${obsoletePath} instead of deleting.` };
     },
   };
 }
