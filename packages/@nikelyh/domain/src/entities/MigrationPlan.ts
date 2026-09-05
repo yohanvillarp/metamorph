@@ -42,9 +42,19 @@ export interface MigrationPlan {
   id: string;
 
   /**
+   * The ID of the shadow workspace run.
+   */
+  runId: string;
+
+  /**
    * The configured profile for this migration.
    */
   profile: MigrationProfile;
+
+  /**
+   * Original target directory path.
+   */
+  targetPath?: string;
 
   /**
    * List of file tasks to migrate.
