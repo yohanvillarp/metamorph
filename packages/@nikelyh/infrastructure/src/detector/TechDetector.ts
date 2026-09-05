@@ -29,6 +29,7 @@ const DETECTION_RULES: DetectionRule[] = [
     packageKeys: ['@nestjs/core', '@nestjs/common'],
     configFiles: ['nest-cli.json'],
   },
+  /*
   {
     framework: 'koa',
     packageKeys: ['koa'],
@@ -39,6 +40,7 @@ const DETECTION_RULES: DetectionRule[] = [
     packageKeys: ['@hapi/hapi', 'hapi'],
     configFiles: [],
   },
+  */
   {
     framework: 'next',
     packageKeys: ['next'],
