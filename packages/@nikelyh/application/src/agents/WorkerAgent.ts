@@ -90,7 +90,7 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
     const tempAgent = createMozaikAgent({
       name: `Worker-${Date.now()}-${Math.floor(Math.random()*1000)}`,
       capabilities: ['code_refactoring', 'inference'],
-      instruction: 'You are the Programmer Worker. Your job is to refactor specific files based on the migration profile using your file reading and writing tools. When you are done modifying the file, simply finish your response.',
+      instruction: 'You are the Programmer Worker. Your job is to refactor specific files based on the migration profile. If the target framework requires a different file structure, you are authorized to use your tools to rename, create, or delete files to adhere to architectural rules. When you are done modifying the file(s), simply finish your response.',
       tools: participant.getTools(),
       handlers: [
       {
@@ -203,7 +203,7 @@ const workOnFileProcessor = {
         prompt += `Use this context to ensure your changes align with the overall project structure and other files.\n`;
       }
     }
-    prompt += `Please read the file using your tools, rewrite it according to the rules, and write it back.`;
+    prompt += `Please read the file using your tools, rewrite it according to the rules, and write it back. If the rules require breaking this file into multiple files, use your create, rename, or delete file tools accordingly.`;
 
     workerQueue.enqueue(async () => {
       await startWorkerLoop(payload.planId, payload.filePath, prompt, participant as Agent);
@@ -252,7 +252,7 @@ const fixRejectedFileProcessor = {
         prompt += `Ensure you respect this overall project structure while fixing the issues.\n`;
       }
     }
-    prompt += `Please read the file, fix the issues mentioned, and write it back.`;
+    prompt += `Please read the file, fix the issues mentioned, and write it back. You may restructure the files if the architectural rules demand it.`;
 
     workerQueue.enqueue(async () => {
       await startWorkerLoop(payload.planId, payload.filePath, prompt, participant as Agent);
@@ -283,7 +283,7 @@ export function createWorkerAgent(tools: Tool[]): Agent {
   return createAgent({
     name: 'Worker',
     capabilities: ['code_refactoring', 'inference'],
-    instruction: 'You are the Programmer Worker.',
+    instruction: 'You are the Programmer Worker. You migrate code and adapt file structures.',
     tools: tools,
     handlers: [
       { specification: new WhenFileDiscovered(), processor: workOnFileProcessor },

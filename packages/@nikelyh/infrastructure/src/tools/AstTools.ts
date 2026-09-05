@@ -77,3 +77,101 @@ export function createWriteFileTool(): Tool {
     },
   };
 }
+
+export function createRenameFileTool(): Tool {
+  return {
+    type: 'function',
+    name: 'rename_file',
+    description: 'Renames a file in the project.',
+    parameters: {
+      type: 'object',
+      properties: {
+        oldPath: { type: 'string', description: 'Current relative path of the file.' },
+        newPath: { type: 'string', description: 'New relative path for the file.' },
+      },
+      required: ['oldPath', 'newPath'],
+      additionalProperties: false,
+    },
+    strict: true,
+    invoke: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
+      const { renameSync, existsSync } = await import('node:fs');
+      if (!existsSync(oldPath)) {
+        return { error: `File not found: ${oldPath}` };
+      }
+      
+      renameSync(oldPath, newPath);
+      
+      // Update ts-morph project if loaded
+      const sourceFile = project.getSourceFile(oldPath);
+      if (sourceFile) {
+        project.removeSourceFile(sourceFile);
+        if (existsSync(newPath)) {
+          project.addSourceFileAtPath(newPath);
+        }
+      }
+      
+      return { success: true, message: `File renamed from ${oldPath} to ${newPath}.` };
+    },
+  };
+}
+
+export function createCreateFileTool(): Tool {
+  return {
+    type: 'function',
+    name: 'create_file',
+    description: 'Creates a new file with the specified content.',
+    parameters: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Relative path of the new file to create.' },
+        content: { type: 'string', description: 'The content of the new file.' },
+      },
+      required: ['filePath', 'content'],
+      additionalProperties: false,
+    },
+    strict: true,
+    invoke: async ({ filePath, content }: { filePath: string; content: string }) => {
+      const { writeFileSync, mkdirSync } = await import('node:fs');
+      const { dirname } = await import('node:path');
+      
+      mkdirSync(dirname(filePath), { recursive: true });
+      writeFileSync(filePath, content, 'utf-8');
+      
+      project.addSourceFileAtPath(filePath);
+      
+      return { success: true, message: `File created at ${filePath}.` };
+    },
+  };
+}
+
+export function createDeleteFileTool(): Tool {
+  return {
+    type: 'function',
+    name: 'delete_file',
+    description: 'Deletes a file from the project.',
+    parameters: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Relative path of the file to delete.' },
+      },
+      required: ['filePath'],
+      additionalProperties: false,
+    },
+    strict: true,
+    invoke: async ({ filePath }: { filePath: string }) => {
+      const { unlinkSync, existsSync } = await import('node:fs');
+      if (!existsSync(filePath)) {
+        return { error: `File not found: ${filePath}` };
+      }
+      
+      unlinkSync(filePath);
+      
+      const sourceFile = project.getSourceFile(filePath);
+      if (sourceFile) {
+        project.removeSourceFile(sourceFile);
+      }
+      
+      return { success: true, message: `File deleted at ${filePath}.` };
+    },
+  };
+}

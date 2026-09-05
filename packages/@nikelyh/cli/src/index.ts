@@ -8,6 +8,9 @@ import {
   SQLiteStateStore,
   createReadFileTool,
   createWriteFileTool,
+  createRenameFileTool,
+  createCreateFileTool,
+  createDeleteFileTool,
   createApiServer,
 } from '@nikelyh/infrastructure';
 import { MigrationRunner } from '@nikelyh/application';
@@ -37,7 +40,13 @@ program
     const spinner = ora('Initializing...').start();
     try {
       const store = new SQLiteStateStore('.metamorph');
-      const tools = [createReadFileTool(), createWriteFileTool()];
+      const tools = [
+        createReadFileTool(),
+        createWriteFileTool(),
+        createRenameFileTool(),
+        createCreateFileTool(),
+        createDeleteFileTool()
+      ];
       const runner = new MigrationRunner(store, tools);
 
       const result = await runner.startMigration({
@@ -70,7 +79,13 @@ program
     const spinner = ora('Starting Metamorph API server...').start();
     try {
       const store = new SQLiteStateStore('.metamorph');
-      const tools = [createReadFileTool(), createWriteFileTool()];
+      const tools = [
+        createReadFileTool(),
+        createWriteFileTool(),
+        createRenameFileTool(),
+        createCreateFileTool(),
+        createDeleteFileTool()
+      ];
       const runner = new MigrationRunner(store, tools);
 
       const app = await createApiServer(store, runner);

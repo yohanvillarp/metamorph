@@ -59,6 +59,70 @@ export function createAppRouter(appService: AppService): Router {
 }`
       }
     ]
+  },
+  {
+    source: 'express',
+    target: 'nestjs',
+    description: 'Migration from a plain Express application to the NestJS framework.',
+    dependenciesToRemove: ['express'],
+    dependenciesToAdd: {
+      '@nestjs/common': 'latest',
+      '@nestjs/core': 'latest',
+      '@nestjs/platform-express': 'latest',
+      'reflect-metadata': '^0.1.13',
+      'rxjs': '^7.8.1'
+    },
+    devDependenciesToRemove: ['@types/express'],
+    devDependenciesToAdd: {
+      '@nestjs/cli': 'latest',
+      '@nestjs/schematics': 'latest',
+      '@nestjs/testing': 'latest',
+      '@types/supertest': '^2.0.12',
+      'source-map-support': '^0.5.21',
+      'supertest': '^6.3.3'
+    },
+    architecturalRules: [
+      'Express routing logic must be encapsulated in classes decorated with @Controller().',
+      'Business logic must be encapsulated in classes decorated with @Injectable() (Providers/Services).',
+      'All Controllers and Providers must be registered in a class decorated with @Module().',
+      'Use NestJS decorators for routing (@Get(), @Post(), @Param(), @Body(), etc.) instead of Express route definitions.',
+      'Rely on NestJS dependency injection instead of manual class instantiation or function passing.',
+      'The entry point must use NestFactory.create() to bootstrap the application, replacing app.listen().',
+      'You are authorized to rename, create, or delete files to adhere strictly to the NestJS directory and file structure conventions (e.g., app.module.ts, app.controller.ts, app.service.ts, main.ts).'
+    ],
+    examples: [
+      {
+        description: 'Converting an Express Router to a NestJS Controller and Service',
+        before: `import { Router } from 'express';
+import { getHelloLogic } from './logic';
+
+export function createAppRouter(): Router {
+  const router = Router();
+  router.get('/', (req, res) => {
+    res.send(getHelloLogic());
+  });
+  return router;
+}`,
+        after: `import { Controller, Get, Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AppService {
+  getHello(): string {
+    return 'Hello from logic';
+  }
+}
+
+@Controller()
+export class AppController {
+  constructor(private readonly appService: AppService) {}
+
+  @Get()
+  getHello(): string {
+    return this.appService.getHello();
+  }
+}`
+      }
+    ]
   }
 ];
 

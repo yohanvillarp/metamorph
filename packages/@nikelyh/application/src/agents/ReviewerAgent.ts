@@ -85,7 +85,7 @@ const reviewFileProcessor = {
     const tempAgent = createMozaikAgent({
       name: reviewerId,
       capabilities: ['code_review', 'inference'],
-      instruction: 'You are the Quality Assurance Reviewer. You must review the migrated code. Be strict! Check for proper syntax, imports, and correct framework usage. If the worker completely violated the architectural paradigm in a way that cannot be fixed by a simple code edit (e.g. migrating to the completely wrong framework), use status FATAL_MISMATCH to abort.',
+      instruction: 'You are the Quality Assurance Reviewer. You must review the migrated code. Note that you are reviewing a SINGLE FILE within a larger migration. Evaluate if the file violates architectural rules, but DO NOT reject it simply because it does not demonstrate all architectural features (e.g. do not reject a test file or a bootstrap file just because it lacks a Controller). If the worker completely violated the architectural paradigm in a way that cannot be fixed by a simple code edit, use status FATAL_MISMATCH to abort.',
       tools: [], // No tools to avoid Gemini thought_signature crash
       handlers: [
         // DEBUG: Catch-all handler to log every event this agent receives
@@ -193,7 +193,7 @@ const reviewFileProcessor = {
       prompt += `Migration Profile: Transform from ${plan.profile.source} to ${plan.profile.target}.\n`;
       const catalogEntry = findMigrationCatalogEntry(plan.profile.source, plan.profile.target);
       if (catalogEntry) {
-        prompt += `\nStrict Architectural Rules for this Migration:\n`;
+        prompt += `\nStrict Architectural Rules for this Migration (apply only if relevant to this file's purpose):\n`;
         catalogEntry.architecturalRules.forEach(rule => prompt += `- ${rule}\n`);
       }
     }
