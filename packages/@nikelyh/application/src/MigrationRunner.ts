@@ -64,7 +64,9 @@ export class MigrationRunner {
     const planId = `plan_${randomUUID()}`;
     const plan: MigrationPlan = {
       id: planId,
+      runId: runId,
       profile: { source: request.from, target: request.to },
+      targetPath: request.targetPath,
       tasks: [],
       createdAt: new Date(),
     };
