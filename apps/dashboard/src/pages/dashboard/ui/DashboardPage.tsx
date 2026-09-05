@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Activity, HardDrive, LayoutDashboard, Cpu, Radio } from 'lucide-react';
-import { SwarmSwimlanes } from '@/widgets/swarm-view/SwarmSwimlanes';
-import { MigrationForm } from '@/widgets/migration-form/MigrationForm';
+import type { MigrationPlan, Tab } from '@/entities/migration';
+import { useAlertStore } from '@/shared/store/alertStore';
 import { EventLog } from '@/widgets/event-log/EventLog';
+import { MigrationForm } from '@/widgets/migration-form/MigrationForm';
 import { OverviewStats } from '@/widgets/overview/OverviewStats';
 import { MigrationQueue } from '@/widgets/queue/MigrationQueue';
-import type { Tab, MigrationPlan } from '@/entities/migration';
+import { SwarmSwimlanes } from '@/widgets/swarm-view/SwarmSwimlanes';
+import { Activity, Cpu, HardDrive, LayoutDashboard, Radio } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 const API_BASE = 'http://localhost:3000';
 
@@ -19,7 +20,6 @@ export const DashboardPage = () => {
   const [startError, setStartError] = useState<string | null>(null);
 
   const [isApplying, setIsApplying] = useState(false);
-  const [applyResult, setApplyResult] = useState<{message?: string, error?: string} | null>(null);
 
   const fetchData = async () => {
     try {
@@ -49,47 +49,77 @@ export const DashboardPage = () => {
       await fetch(`${API_BASE}/api/migrations/reset`, {
         method: 'POST',
       });
-      setApplyResult(null);
       await fetchData();
     } catch (err) {
       console.error('Failed to reset:', err);
     }
   };
 
+  const { showAlert, showConfirm } = useAlertStore();
+
   const handleApplyMigration = async () => {
     if (!latestPlan) return;
-    setIsApplying(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/migrations/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          runId: latestPlan.runId,
-          targetPath: latestPlan.targetPath 
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setApplyResult({ message: data.message });
-    } catch (err: any) {
-      setApplyResult({ error: err.message });
-    } finally {
-      setIsApplying(false);
-    }
+    
+    showConfirm(
+      'Apply Migration?',
+      <p>Are you sure you want to integrate these changes? This will create a new Git branch and commit the migrated files to your repository.</p>,
+      async () => {
+        setIsApplying(true);
+        try {
+          const res = await fetch(`${API_BASE}/api/migrations/apply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              runId: latestPlan.runId,
+              targetPath: latestPlan.targetPath 
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          
+          const branchMatch = data.message.match(/branch: (.*)/);
+          const branch = branchMatch ? branchMatch[1] : 'metamorph/run_...';
+
+          showAlert(
+            'Integration Successful',
+            <div className="space-y-4">
+              <p>{data.message}</p>
+              <p className="font-bold">Next steps:</p>
+              <pre className="bg-neo-border p-4 font-mono text-sm text-neo-bg overflow-x-auto whitespace-pre-wrap">
+{`cd ${latestPlan.targetPath}
+git fetch
+git checkout ${branch}`}
+              </pre>
+            </div>
+          );
+        } catch (err: any) {
+          showAlert('Apply Failed', <p className="text-red-500 font-bold">{err.message}</p>);
+        } finally {
+          setIsApplying(false);
+        }
+      }
+    );
   };
 
   const handleDiscardMigration = async () => {
     if (!latestPlan) return;
-    try {
-      await fetch(`${API_BASE}/api/migrations/rollback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ runId: latestPlan.runId })
-      });
-      handleResetMigration();
-    } catch (err) {
-      console.error('Failed to discard:', err);
-    }
+    
+    showConfirm(
+      'Discard Migration?',
+      <p>This will permanently delete the Shadow Workspace for this run. Are you sure?</p>,
+      async () => {
+        try {
+          await fetch(`${API_BASE}/api/migrations/rollback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ runId: latestPlan.runId })
+          });
+          handleResetMigration();
+        } catch (err: any) {
+          showAlert('Discard Failed', <p className="text-red-500">{err.message}</p>);
+        }
+      }
+    );
   };
 
   const handleStartMigration = async (targetPath: string, fromFw: string, toFw: string) => {
@@ -199,27 +229,19 @@ export const DashboardPage = () => {
             <div className="flex items-center gap-4">
               {isFinished && (
                 <div className="flex items-center gap-2 mr-2 border-r-2 border-neo-border pr-6">
-                  {applyResult ? (
-                    <span className="font-bold text-sm bg-neo-primary text-neo-primary-text px-3 py-1">
-                      {applyResult.message || applyResult.error}
-                    </span>
-                  ) : (
-                    <>
-                      <button 
-                        onClick={handleApplyMigration}
-                        disabled={isApplying}
-                        className="bg-green-400 font-black text-sm uppercase px-4 py-2 border-2 border-neo-border hover:bg-green-500 transition-colors shadow-[4px_4px_0px_0px_var(--neo-text)] active:translate-y-1 active:translate-x-1 active:shadow-none"
-                      >
-                        {isApplying ? 'Applying...' : 'Apply Migration'}
-                      </button>
-                      <button 
-                        onClick={handleDiscardMigration}
-                        className="bg-red-400 font-black text-sm uppercase px-4 py-2 border-2 border-neo-border hover:bg-red-500 transition-colors text-white active:translate-y-1 active:translate-x-1 active:shadow-none"
-                      >
-                        Discard
-                      </button>
-                    </>
-                  )}
+                  <button 
+                    onClick={handleApplyMigration}
+                    disabled={isApplying}
+                    className="bg-green-400 font-black text-sm uppercase px-4 py-2 border-2 border-neo-border hover:bg-green-500 transition-colors shadow-[4px_4px_0px_0px_var(--neo-text)] active:translate-y-1 active:translate-x-1 active:shadow-none"
+                  >
+                    {isApplying ? 'Applying...' : 'Apply Migration'}
+                  </button>
+                  <button 
+                    onClick={handleDiscardMigration}
+                    className="bg-red-400 font-black text-sm uppercase px-4 py-2 border-2 border-neo-border hover:bg-red-500 transition-colors text-white active:translate-y-1 active:translate-x-1 active:shadow-none"
+                  >
+                    Discard
+                  </button>
                 </div>
               )}
               <button 
