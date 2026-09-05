@@ -214,6 +214,108 @@ fastify.listen({ port: 3000 }, (err) => {
 });`
       }
     ]
+  },
+  {
+    source: 'fastify',
+    target: 'express',
+    description: 'Migration from a Fastify application to Express.',
+    dependenciesToRemove: ['fastify', 'fastify-plugin'],
+    dependenciesToAdd: { 'express': 'latest' },
+    devDependenciesToRemove: [],
+    devDependenciesToAdd: { '@types/express': 'latest' },
+    architecturalRules: [
+      'Replace all fastify() app instantiations with express().',
+      'Replace Fastify hooks (onRequest, preHandler, etc.) with standard Express middleware signatures (req, res, next).',
+      'Replace Fastify routing (fastify.get, fastify.register) with Express routing (app.get, express.Router().use).',
+      'Replace Fastify reply methods (reply.send) or implicit returns with Express response methods (res.send, res.json).',
+      'CRITICAL: Fastify catches async errors automatically. When migrating to Express, ensure all asynchronous route handlers use try/catch blocks passing the error to next(err), or wrap them in an async wrapper.',
+      'You are authorized to rename, create, or delete files to restructure the Fastify plugins into standard Express routers.'
+    ],
+    examples: [
+      {
+        description: 'Converting a Fastify Route to an Express Route',
+        before: `import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.get('/api/data', async (request, reply) => {
+  return { message: 'Hello Fastify' };
+});
+
+fastify.listen({ port: 3000 });`,
+        after: `const express = require('express');
+const app = express();
+
+app.get('/api/data', async (req, res, next) => {
+  try {
+    res.json({ message: 'Hello Fastify' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.listen(3000);`
+      }
+    ]
+  },
+  {
+    source: 'fastify',
+    target: 'nestjs',
+    description: 'Migration from Fastify framework to NestJS (using platform-express by default).',
+    dependenciesToRemove: ['fastify', 'fastify-plugin'],
+    dependenciesToAdd: {
+      '@nestjs/common': 'latest',
+      '@nestjs/core': 'latest',
+      '@nestjs/platform-express': 'latest',
+      'reflect-metadata': '^0.1.13',
+      'rxjs': '^7.8.1'
+    },
+    devDependenciesToRemove: [],
+    devDependenciesToAdd: {
+      '@nestjs/cli': 'latest',
+      '@nestjs/schematics': 'latest',
+      '@nestjs/testing': 'latest',
+      '@types/supertest': '^2.0.12',
+      'source-map-support': '^0.5.21',
+      'supertest': '^6.3.3'
+    },
+    architecturalRules: [
+      'Fastify routing logic must be encapsulated in classes decorated with @Controller().',
+      'Business logic must be encapsulated in classes decorated with @Injectable() (Providers/Services).',
+      'All Controllers and Providers must be registered in a class decorated with @Module().',
+      'Use NestJS decorators for routing (@Get(), @Post(), @Param(), @Body(), etc.) instead of fastify route definitions.',
+      'Rely on NestJS dependency injection instead of Fastify decorators or options passing.',
+      'The entry point must use NestFactory.create() to bootstrap the application, replacing fastify().',
+      'You are authorized to rename, create, or delete files to adhere strictly to the NestJS directory and file structure conventions (e.g., app.module.ts, app.controller.ts, app.service.ts, main.ts).'
+    ],
+    examples: [
+      {
+        description: 'Converting a Fastify Plugin to a NestJS Controller and Service',
+        before: `export default async function usersPlugin(fastify, options) {
+  fastify.get('/users', async (request, reply) => {
+    return { users: [] };
+  });
+}`,
+        after: `import { Controller, Get, Injectable } from '@nestjs/common';
+
+@Injectable()
+export class UsersService {
+  getUsers() {
+    return { users: [] };
+  }
+}
+
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  getUsers() {
+    return this.usersService.getUsers();
+  }
+}`
+      }
+    ]
   }
 ];
 
