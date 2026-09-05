@@ -3,21 +3,27 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "bin": {
-    "metamorph": "./dist/index.js"
+    "metamorph": "./bin/metamorph.js"
   },
   "type": "module",
   "scripts": {
-    "build": "tsup src/index.ts --format esm",
+    "build": "tsup",
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
-    "commander": "^15.0.0",
-    "chalk": "^6.0.0",
-    "ora": "^9.4.1",
     "@nikelyh/application": "*",
-    "@nikelyh/infrastructure": "*"
+    "@nikelyh/infrastructure": "*",
+    "chalk": "^6.0.0",
+    "commander": "^15.0.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "fs-extra": "^11.4.0",
+    "ora": "^9.4.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/fs-extra": "^11.0.4",
     "tsup": "^8.5.1",
     "tsx": "^4.23.13"
   }

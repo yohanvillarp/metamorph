@@ -2,36 +2,91 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
+import 'dotenv/config';
+
+import {
+  SQLiteStateStore,
+  createReadFileTool,
+  createWriteFileTool,
+  createApiServer,
+} from '@nikelyh/infrastructure';
+import { MigrationRunner } from '@nikelyh/application';
 
 const program = new Command();
 
 program
   .name('metamorph')
-  .description('Herramienta de migración automática de código propulsada por agentes paralelos (Mozaik).')
+  .description('AI-powered technology migration tool using Mozaik Agents')
   .version('1.0.0');
 
+// ─── RUN COMMAND ───────────────────────────────────────────
+
 program
-  .command('migrate')
-  .description('Inicia el proceso de migración para un codebase')
-  .argument('<sourceFramework>', 'Framework actual (ej: express)')
-  .argument('<targetFramework>', 'Framework destino (ej: fastify)')
-  .argument('<path>', 'Ruta al código fuente')
-  .action(async (sourceFramework, targetFramework, path) => {
-    console.log(chalk.cyan(`\nIniciando METAMORPH: ${sourceFramework} -> ${targetFramework} en '${path}'\n`));
-    
-    const spinner = ora('Inicializando agentes...').start();
-    
+  .command('run <path>')
+  .description('Run a migration on the specified directory')
+  .requiredOption('--from <source>', 'Source framework (e.g. express)')
+  .requiredOption('--to <target>', 'Target framework (e.g. fastify)')
+  .action(async (targetPath: string, options: { from: string; to: string }) => {
+    console.log(chalk.blue(`\n🚀 Starting Metamorph Migration`));
+    console.log(chalk.gray(`Target: ${targetPath} | ${options.from} -> ${options.to}\n`));
+
+    if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+      console.log(chalk.yellow(`⚠️ WARNING: No LLM API key detected.\n`));
+    }
+
+    const spinner = ora('Initializing...').start();
     try {
-      // TODO: Conectar con el Core (MigrationCommand)
-      // Ejemplo: await migrationService.startMigration(sourceFramework, targetFramework, path);
-      
-      setTimeout(() => {
-        spinner.succeed(chalk.green('Agentes orquestados. Migración simulada con éxito.'));
-        console.log(chalk.gray('\n→ Eventos publicados en el bus (simulado)\n'));
-      }, 2000);
-      
+      const store = new SQLiteStateStore('.metamorph');
+      const tools = [createReadFileTool(), createWriteFileTool()];
+      const runner = new MigrationRunner(store, tools);
+
+      const result = await runner.startMigration({
+        targetPath,
+        from: options.from,
+        to: options.to,
+      });
+
+      spinner.succeed(`Migration dispatched! Plan: ${result.planId}`);
+      console.log(chalk.gray(`Shadow: ${result.shadowPath}`));
+      console.log(chalk.blue(`\n⏳ Agents are now working...`));
+
+      await new Promise((resolve) => setTimeout(resolve, 20000));
+      console.log(chalk.green(`\n✅ Migration simulation finished.`));
+      process.exit(0);
     } catch (error: any) {
-      spinner.fail(chalk.red(`Error durante la migración: ${error.message}`));
+      spinner.fail(`Migration failed: ${error.message}`);
+      process.exit(1);
+    }
+  });
+
+// ─── UI COMMAND ────────────────────────────────────────────
+
+program
+  .command('ui')
+  .description('Start the Metamorph Dashboard API server')
+  .option('-p, --port <number>', 'Port for the API server', '3000')
+  .action(async (options) => {
+    const port = parseInt(options.port, 10);
+    const spinner = ora('Starting Metamorph API server...').start();
+    try {
+      const store = new SQLiteStateStore('.metamorph');
+      const tools = [createReadFileTool(), createWriteFileTool()];
+      const runner = new MigrationRunner(store, tools);
+
+      const app = await createApiServer(store, runner);
+
+      app.listen(port, () => {
+        spinner.succeed(
+          `Metamorph API running on http://localhost:${port}`
+        );
+        console.log(chalk.blue(`\nEndpoints available:`));
+        console.log(chalk.gray(`  GET  /api/plans`));
+        console.log(chalk.gray(`  GET  /api/events`));
+        console.log(chalk.gray(`  POST /api/migrations/start`));
+        console.log(chalk.gray(`  POST /api/migrations/rollback`));
+      });
+    } catch (error: any) {
+      spinner.fail(`Failed to start: ${error.message}`);
       process.exit(1);
     }
   });

@@ -31,3 +31,5 @@ pnpm-debug.log*
 # Archivos del Sistema Operativo
 .DS_Store
 Thumbs.db
+.agents/
+scratch/playgrounds/

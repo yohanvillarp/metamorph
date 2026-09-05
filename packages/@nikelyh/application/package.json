@@ -5,6 +5,13 @@
   "type": "module",
   "dependencies": {
     "@mozaik-ai/core": "^4.0.5",
-    "@nikelyh/domain": "*"
+    "@nikelyh/domain": "*",
+    "@nikelyh/infrastructure": "*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1"
   }
 }

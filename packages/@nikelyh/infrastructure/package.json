@@ -4,8 +4,20 @@
   "main": "src/index.ts",
   "type": "module",
   "dependencies": {
-    "ts-morph": "^28.0.0",
-    "@nikelyh/domain": "*"
+    "@mozaik-ai/core": "^4.0.5",
+    "@nikelyh/domain": "*",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "fs-extra": "^11.4.0",
+    "ts-morph": "^28.0.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
 }
