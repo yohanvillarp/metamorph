@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   createAgent,
   SituationSpecification,
@@ -25,24 +27,45 @@ const mapFilesProcessor = {
     const payload = event.payload as SemanticEventPayloads.MigrationStarted;
     console.log(`[MapperAgent] Migration started for Plan: ${payload.planId}`);
     
-    // In a real scenario, this agent would scan the folder tree and AST.
-    // For now, we simulate discovering one file and publishing the event.
-    const discoveredFile = 'scratch/dummy-express.ts';
-    console.log(`[MapperAgent] Discovered file: ${discoveredFile}`);
+    // Discover files inside the shadow directory
+    const shadowDir = payload.shadowWorkspacePath || '';
+    if (!shadowDir) {
+      console.warn('[MapperAgent] No shadow workspace provided. Skipping.');
+      return;
+    }
+    
+    // Find all .ts and .js files recursively
+    const filesToMigrate: string[] = [];
+    const scanDir = (dir: string) => {
+      if (!fs.existsSync(dir)) return;
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        const fullPath = path.join(dir, file);
+        if (fs.statSync(fullPath).isDirectory()) {
+          scanDir(fullPath);
+        } else if (file.endsWith('.ts') || file.endsWith('.js')) {
+          filesToMigrate.push(fullPath);
+        }
+      }
+    };
+    scanDir(shadowDir);
 
-    // Fire the event to the Mozaik bus so the WorkerAgent wakes up
-    sendEvent(
-      {
-        type: SemanticEventName.FILE_DISCOVERED,
-        producerId: participant.getId(),
-        occurredAt: new Date(),
-        payload: {
-          planId: payload.planId,
-          filePath: discoveredFile,
-        } as SemanticEventPayloads.FileDiscovered,
-      },
-      participant.getId()
-    );
+    for (const discoveredFile of filesToMigrate) {
+      console.log(`[MapperAgent] Discovered file: ${discoveredFile}`);
+      // Fire the event to the Mozaik bus so the WorkerAgent wakes up
+      sendEvent(
+        {
+          type: SemanticEventName.FILE_DISCOVERED,
+          producerId: participant.getId(),
+          occurredAt: new Date(),
+          payload: {
+            planId: payload.planId,
+            filePath: discoveredFile,
+          } as SemanticEventPayloads.FileDiscovered,
+        },
+        participant.getId()
+      );
+    }
   },
 };
 
