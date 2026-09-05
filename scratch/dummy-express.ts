@@ -5,7 +5,7 @@ const port = 3000;
 
 app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
   console.log('Request received at', request.url);
-  reply.send('Hello World!');
+  return reply.send('Hello World!');
 });
 
 app.listen({ port }, (err, address) => {

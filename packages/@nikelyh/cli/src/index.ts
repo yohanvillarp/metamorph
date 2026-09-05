@@ -89,16 +89,48 @@ program
   });
 
 program
-  .command('config set <keyValue>')
-  .description('Set a configuration value (e.g., OPENAI_API_KEY=sk-...)')
-  .action((keyValue: string) => {
-    const [key, value] = keyValue.split('=');
-    if (!key || !value) {
-      console.log(chalk.red('Invalid format. Use KEY=VALUE'));
-      return;
+  .command('ui')
+  .description('Start the Metamorph Dashboard UI server')
+  .option('-p, --port <number>', 'Port to run the UI server on', '3000')
+  .action(async (options) => {
+    const port = parseInt(options.port, 10);
+    const spinner = ora('Starting Metamorph UI server...').start();
+    try {
+      const express = (await import('express')).default;
+      const cors = (await import('cors')).default;
+
+      const app = express();
+      app.use(cors());
+      app.use(express.json());
+
+      const store = new SQLiteStateStore('.metamorph');
+
+      app.get('/api/plans', async (req, res) => {
+        try {
+          const plans = await store.getAllPlans();
+          res.json(plans);
+        } catch (error: any) {
+          res.status(500).json({ error: error.message });
+        }
+      });
+
+      app.get('/api/events', async (req, res) => {
+        try {
+          const events = await store.getEvents();
+          res.json(events);
+        } catch (error: any) {
+          res.status(500).json({ error: error.message });
+        }
+      });
+
+      app.listen(port, () => {
+        spinner.succeed(`Metamorph Dashboard API running on http://localhost:${port}`);
+        console.log(chalk.blue(`\nIn a separate terminal, run React dashboard to connect to this API.`));
+      });
+    } catch (error: any) {
+      spinner.fail(`Failed to start UI server: ${error.message}`);
+      process.exit(1);
     }
-    // In a real implementation, this would write to ~/.metamorph/config.json
-    console.log(chalk.green(`✓ Config ${key} saved successfully (Simulation)`));
   });
 
 program.parse(process.argv);

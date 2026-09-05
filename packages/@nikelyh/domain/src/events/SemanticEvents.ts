@@ -8,6 +8,7 @@ export enum SemanticEventName {
   MIGRATION_STARTED = 'migration.started',
   FILE_DISCOVERED = 'file.discovered',
   FILE_MIGRATED = 'file.migrated',
+  FILE_REVIEWED = 'file.reviewed',
   FILE_REJECTED = 'file.rejected',
   MIGRATION_COMPLETED = 'migration.completed',
 }

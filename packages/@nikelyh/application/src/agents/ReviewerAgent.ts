@@ -37,9 +37,22 @@ const reviewFileProcessor = {
         {
           specification: new WhenReviewCompleted(),
           processor: {
-            apply({ participant }) {
+            async apply({ participant }) {
               console.log(`[ReviewerAgent:${participant.getId()}] File ${payload.filePath} approved by Gemini!`);
-              // Here we would emit FILE_REVIEWED or FILE_REJECTED based on the LLM's response
+              // Emit event to update telemetry
+              const { sendEvent } = await import('../runtime');
+              sendEvent(
+                {
+                  type: SemanticEventName.FILE_REVIEWED,
+                  producerId: participant.getId(),
+                  occurredAt: new Date(),
+                  payload: {
+                    planId: payload.planId,
+                    filePath: payload.filePath,
+                  },
+                },
+                participant.getId()
+              );
               leave(participant);
             }
           }

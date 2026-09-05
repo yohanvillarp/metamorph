@@ -4,7 +4,7 @@ import { createMapperAgent } from './agents/MapperAgent';
 import { createWorkerAgent } from './agents/WorkerAgent';
 import { createReviewerAgent } from './agents/ReviewerAgent';
 
-import { Tool } from '@mozaik-ai/core';
+import { Tool, createAgent, SituationSpecification } from '@mozaik-ai/core';
 
 /**
  * Bootstraps the Mozaik Application Layer.
@@ -16,6 +16,38 @@ export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = 
   initializeRuntime({
     state: new MetamorphState(repository),
   });
+
+  // 1.5. Add Telemetry Logger Agent to intercept ALL events and write to DB
+  class AllEventsSpecification extends SituationSpecification {
+    isSatisfiedBy(): boolean {
+      return true;
+    }
+  }
+
+  const loggerAgent = createAgent({
+    name: 'TelemetryLogger',
+    capabilities: [],
+    instruction: 'You silently log everything.',
+    tools: [],
+    handlers: [
+      {
+        specification: new AllEventsSpecification(),
+        processor: {
+          async apply({ event }) {
+            const { resolveRuntime } = await import('./runtime');
+            const runtime = resolveRuntime();
+            const repository = runtime.state.repository;
+            
+            // Only log our semantic events, ignore internal 'inference.*' noise
+            if (event.type.includes('migration') || event.type.includes('file')) {
+              await repository.logEvent(event.type, event.payload || {});
+            }
+          }
+        }
+      }
+    ]
+  });
+  join(loggerAgent);
 
   // 2. Instantiate our agents
   const mapper = createMapperAgent();

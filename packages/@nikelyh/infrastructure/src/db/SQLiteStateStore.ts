@@ -142,4 +142,42 @@ export class SQLiteStateStore implements StateRepository {
     `);
     stmt.run(eventName, JSON.stringify(payload), new Date().toISOString());
   }
+
+  async getAllPlans(): Promise<MigrationPlan[]> {
+    const stmtPlans = this.db.prepare(`SELECT * FROM plans ORDER BY created_at DESC`);
+    const planRows = stmtPlans.all() as any[];
+
+    const stmtTasks = this.db.prepare(`SELECT * FROM tasks`);
+    const taskRows = stmtTasks.all() as any[];
+
+    return planRows.map((planRow) => {
+      const planTasks = taskRows.filter((t) => t.plan_id === planRow.id);
+      return {
+        id: planRow.id,
+        profile: {
+          source: planRow.source_framework,
+          target: planRow.target_framework,
+          rules: JSON.parse(planRow.rules_json),
+        },
+        createdAt: new Date(planRow.created_at),
+        tasks: planTasks.map((row) => ({
+          filePath: row.file_path,
+          status: row.status as TaskStatus,
+          dependencies: JSON.parse(row.dependencies_json),
+          error: row.error,
+        })),
+      };
+    });
+  }
+
+  async getEvents(): Promise<any[]> {
+    const stmt = this.db.prepare(`SELECT * FROM events ORDER BY id DESC LIMIT 100`);
+    const rows = stmt.all() as any[];
+    return rows.map((row) => ({
+      id: row.id,
+      eventName: row.event_name,
+      payload: JSON.parse(row.payload_json),
+      timestamp: new Date(row.timestamp),
+    }));
+  }
 }

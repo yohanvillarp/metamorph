@@ -17,6 +17,11 @@ export interface StateRepository {
   getPlan(id: string): Promise<MigrationPlan | null>;
 
   /**
+   * Retrieves all saved migration plans.
+   */
+  getAllPlans(): Promise<MigrationPlan[]>;
+
+  /**
    * Updates the status of a specific task (file) within a plan.
    */
   updateTaskStatus(planId: string, filePath: string, status: TaskStatus, error?: string): Promise<void>;
@@ -26,4 +31,9 @@ export interface StateRepository {
    * Vital for drawing timelines in the Web dashboard.
    */
   logEvent(eventName: string, payload: any): Promise<void>;
+
+  /**
+   * Retrieves all logged events.
+   */
+  getEvents(): Promise<any[]>;
 }
