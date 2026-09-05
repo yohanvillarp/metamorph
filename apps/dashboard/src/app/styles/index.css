@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Roboto:wght@400;500;700;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-neo-bg: var(--neo-bg);
+  --color-neo-text: var(--neo-text);
+  --color-neo-border: var(--neo-border);
+  --color-neo-shadow: var(--neo-shadow);
+  --color-neo-surface: var(--neo-surface);
+  --color-neo-primary: var(--neo-primary);
+  --color-neo-primary-text: var(--neo-primary-text);
+  
+  --font-sans: 'Roboto', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  /* Tema Claro (Light) */
+  :root {
+    --neo-bg: #ffffff;
+    --neo-text: #0a0a0a;
+    --neo-border: #0a0a0a;
+    --neo-shadow: #0a0a0a;
+    --neo-surface: #ffffff;
+    --neo-primary: #0a0a0a;
+    --neo-primary-text: #ffffff;
+  }
+
+  /* Tema Oscuro (Dark) */
+  .dark {
+    --neo-bg: #0a0a0a;
+    --neo-text: #ffffff;
+    --neo-border: #ffffff;
+    --neo-shadow: #ffffff;
+    --neo-surface: #171717;
+    --neo-primary: #ffffff;
+    --neo-primary-text: #0a0a0a;
+  }
+
+  /* Tema Azul (Blue) */
+  .blue {
+    --neo-bg: #eff6ff;
+    --neo-text: #1e3a8a;
+    --neo-border: #1e3a8a;
+    --neo-shadow: #1e3a8a;
+    --neo-surface: #dbeafe;
+    --neo-primary: #1e3a8a;
+    --neo-primary-text: #ffffff;
+  }
+
+  body {
+    @apply bg-neo-bg text-neo-text font-sans antialiased;
+    margin: 0;
+  }
+}
+
+@layer components {
+  .neo-card {
+    @apply border-2 border-neo-border p-6 bg-neo-surface shadow-[4px_4px_0px_0px_var(--neo-shadow)];
+  }
+  
+  .neo-title {
+    @apply font-bold text-sm tracking-widest uppercase border-b-2 border-neo-border pb-2 mb-4 block;
+  }
+  
+  .neo-badge {
+    @apply border-2 border-neo-border uppercase font-bold px-2 py-1 text-xs;
+  }
+  
+  .neo-table-th {
+    @apply p-4 text-sm font-bold uppercase tracking-widest bg-neo-primary text-neo-primary-text border-2 border-neo-border;
+  }
+  
+  .neo-table-td {
+    @apply p-4 text-sm font-bold border-2 border-neo-border bg-neo-surface;
+  }
+  
+  .neo-btn {
+    @apply px-4 py-2 bg-neo-surface text-neo-text border-2 border-neo-border shadow-[2px_2px_0px_0px_var(--neo-shadow)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all font-bold uppercase cursor-pointer select-none;
+  }
+  
+  .neo-btn-primary {
+    @apply px-4 py-2 bg-neo-primary text-neo-primary-text border-2 border-neo-border shadow-[2px_2px_0px_0px_var(--neo-shadow)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all font-bold uppercase cursor-pointer select-none;
+  }
+  
+  .neo-btn-purple {
+    @apply px-4 py-2 bg-purple-400 text-black border-2 border-neo-border shadow-[2px_2px_0px_0px_var(--neo-shadow)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all font-bold uppercase cursor-pointer select-none;
+  }
+}
