@@ -45,11 +45,11 @@ export class MigrationIntegrator {
   private async applyWithGit(runId: string, shadowDir: string, targetPath: string): Promise<string> {
     const branchName = `metamorph/${runId}`;
     
-    // 1. Create a new branch
+    // 1. Create a new branch (or reset if it already exists)
     try {
-      execSync(`git checkout -b ${branchName}`, { cwd: targetPath, stdio: 'ignore' });
+      execSync(`git checkout -B ${branchName}`, { cwd: targetPath, stdio: 'ignore' });
     } catch (e: any) {
-      throw new Error(`Failed to create git branch ${branchName}: ${e.message}`);
+      throw new Error(`Failed to create/reset git branch ${branchName}: ${e.message}`);
     }
 
     // 2. Overwrite files
@@ -58,7 +58,8 @@ export class MigrationIntegrator {
     // 3. Commit changes
     try {
       execSync(`git add .`, { cwd: targetPath, stdio: 'ignore' });
-      execSync(`git commit -m "chore: apply metamorph ai migration (${runId})"`, { cwd: targetPath, stdio: 'ignore' });
+      // Use --allow-empty in case the user applies the exact same migration twice
+      execSync(`git commit --allow-empty -m "chore: apply metamorph ai migration (${runId})"`, { cwd: targetPath, stdio: 'ignore' });
     } catch (e: any) {
       throw new Error(`Failed to commit changes to branch ${branchName}: ${e.message}`);
     }
