@@ -128,11 +128,12 @@ export class SQLiteStateStore implements StateRepository {
     error?: string
   ): Promise<void> {
     const stmt = this.db.prepare(`
-      UPDATE tasks 
-      SET status = ?, error = ? 
-      WHERE plan_id = ? AND file_path = ?
+      INSERT INTO tasks (plan_id, file_path, status, error, dependencies_json)
+      VALUES (?, ?, ?, ?, '[]')
+      ON CONFLICT(plan_id, file_path) DO UPDATE 
+      SET status = excluded.status, error = excluded.error
     `);
-    stmt.run(status, error || null, planId, filePath);
+    stmt.run(planId, filePath, status, error || null);
   }
 
   async logEvent(eventName: string, payload: any): Promise<void> {
@@ -179,5 +180,11 @@ export class SQLiteStateStore implements StateRepository {
       payload: JSON.parse(row.payload_json),
       timestamp: new Date(row.timestamp),
     }));
+  }
+
+  async reset(): Promise<void> {
+    this.db.exec(`DELETE FROM tasks`);
+    this.db.exec(`DELETE FROM plans`);
+    this.db.exec(`DELETE FROM events`);
   }
 }
