@@ -1,4 +1,5 @@
 import { StateRepository, findMigrationCatalogEntry } from '@nikelyh/domain';
+import { MigrationIntegrator } from '../workspace/MigrationIntegrator.js';
 
 /**
  * Creates and configures the Express REST API server.
@@ -120,6 +121,22 @@ export async function createApiServer(
           to,
         });
         res.json({ ok: true, ...result });
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    app.post('/api/migrations/apply', async (req: any, res: any) => {
+      try {
+        const { runId, targetPath } = req.body;
+        if (!runId || !targetPath) {
+          return res.status(400).json({
+            error: 'Missing required fields: runId, targetPath',
+          });
+        }
+        const integrator = new MigrationIntegrator(migrationRunner.workspace);
+        const message = await integrator.applyMigration(runId, targetPath);
+        res.json({ ok: true, message });
       } catch (error: any) {
         res.status(500).json({ error: error.message });
       }

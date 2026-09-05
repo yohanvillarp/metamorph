@@ -34,12 +34,18 @@ export class SQLiteStateStore implements StateRepository {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS plans (
         id TEXT PRIMARY KEY,
+        run_id TEXT,
+        target_path TEXT,
         source_framework TEXT,
         target_framework TEXT,
         rules_json TEXT,
         created_at TEXT
       );
     `);
+    
+    // Auto-migrate schema if columns are missing
+    try { this.db.exec('ALTER TABLE plans ADD COLUMN run_id TEXT'); } catch (e) {}
+    try { this.db.exec('ALTER TABLE plans ADD COLUMN target_path TEXT'); } catch (e) {}
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -65,12 +71,14 @@ export class SQLiteStateStore implements StateRepository {
 
   async savePlan(plan: MigrationPlan): Promise<void> {
     const stmtPlan = this.db.prepare(`
-      INSERT OR REPLACE INTO plans (id, source_framework, target_framework, rules_json, created_at)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO plans (id, run_id, target_path, source_framework, target_framework, rules_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     
     stmtPlan.run(
       plan.id,
+      plan.runId,
+      plan.targetPath || '',
       plan.profile.source,
       plan.profile.target,
       JSON.stringify(plan.profile.rules || []),
@@ -106,6 +114,8 @@ export class SQLiteStateStore implements StateRepository {
 
     return {
       id: planRow.id,
+      runId: planRow.run_id,
+      targetPath: planRow.target_path,
       profile: {
         source: planRow.source_framework,
         target: planRow.target_framework,
@@ -155,6 +165,8 @@ export class SQLiteStateStore implements StateRepository {
       const planTasks = taskRows.filter((t) => t.plan_id === planRow.id);
       return {
         id: planRow.id,
+        runId: planRow.run_id,
+        targetPath: planRow.target_path,
         profile: {
           source: planRow.source_framework,
           target: planRow.target_framework,
