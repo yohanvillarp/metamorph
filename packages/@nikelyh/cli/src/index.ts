@@ -73,11 +73,16 @@ program
 program
   .command('ui')
   .description('Start the Metamorph Dashboard API server')
-  .option('-p, --port <number>', 'Port for the API server', '3000')
+  .option('-p, --port <number>', 'Port for the API server', '9876')
   .action(async (options) => {
-    const port = parseInt(options.port, 10);
+    let desiredPort = parseInt(options.port, 10);
     const spinner = ora('Starting Metamorph API server...').start();
     try {
+      const getPort = (await import('get-port')).default;
+      const open = (await import('open')).default;
+      
+      const port = await getPort({ port: desiredPort });
+      
       const store = new SQLiteStateStore('.metamorph');
       const tools = [
         createReadFileTool(),
@@ -92,13 +97,16 @@ program
 
       app.listen(port, () => {
         spinner.succeed(
-          `Metamorph API running on http://localhost:${port}`
+          `Metamorph UI running on http://localhost:${port}`
         );
         console.log(chalk.blue(`\nEndpoints available:`));
         console.log(chalk.gray(`  GET  /api/plans`));
         console.log(chalk.gray(`  GET  /api/events`));
         console.log(chalk.gray(`  POST /api/migrations/start`));
         console.log(chalk.gray(`  POST /api/migrations/rollback`));
+        
+        // Auto open browser
+        open(`http://localhost:${port}`);
       });
     } catch (error: any) {
       spinner.fail(`Failed to start: ${error.message}`);

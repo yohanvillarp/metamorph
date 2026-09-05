@@ -167,5 +167,18 @@ export async function createApiServer(
     });
   }
 
+  // ─── STATIC SPA SERVING ──────────────────────────────────
+  const path = await import('node:path');
+  const fs = await import('node:fs');
+  const publicDir = path.join(__dirname, '../public');
+
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir));
+    // Catch-all route for SPA
+    app.get('*', (_req: any, res: any) => {
+      res.sendFile(path.join(publicDir, 'index.html'));
+    });
+  }
+
   return app;
 }
