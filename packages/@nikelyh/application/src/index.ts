@@ -2,6 +2,7 @@ import { StateRepository } from '@nikelyh/domain';
 import { MetamorphState, initializeRuntime, join, sendEvent } from './runtime';
 import { createMapperAgent } from './agents/MapperAgent';
 import { createWorkerAgent } from './agents/WorkerAgent';
+import { createReviewerAgent } from './agents/ReviewerAgent';
 
 import { Tool } from '@mozaik-ai/core';
 
@@ -19,19 +20,23 @@ export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = 
   // 2. Instantiate our agents
   const mapper = createMapperAgent();
   const worker = createWorkerAgent(tools);
+  const reviewer = createReviewerAgent(tools);
 
   // 3. Connect them to the Event Bus
   join(mapper);
   join(worker);
+  join(reviewer);
 
-  console.log(`[App] Mozaik initialized. Agents joined: ${mapper.getId()} (Mapper), ${worker.getId()} (Worker)`);
+  console.log(`[App] Mozaik initialized. Agents joined: ${mapper.getId()} (Mapper), ${worker.getId()} (Worker), ${reviewer.getId()} (Reviewer)`);
 
   return {
     mapperId: mapper.getId(),
     workerId: worker.getId(),
+    reviewerId: reviewer.getId(),
   };
 }
 
 export * from './runtime';
 export * from './agents/MapperAgent';
 export * from './agents/WorkerAgent';
+export * from './agents/ReviewerAgent';

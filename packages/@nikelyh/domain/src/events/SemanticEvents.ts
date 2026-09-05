@@ -20,6 +20,7 @@ export namespace SemanticEventPayloads {
   export interface MigrationStarted {
     planId: string;
     profile: MigrationProfile;
+    shadowWorkspacePath?: string;
   }
 
   export interface FileDiscovered {
