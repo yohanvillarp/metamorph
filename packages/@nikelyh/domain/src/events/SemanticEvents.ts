@@ -10,6 +10,7 @@ export enum SemanticEventName {
   FILE_MIGRATED = 'file.migrated',
   FILE_REVIEWED = 'file.reviewed',
   FILE_REJECTED = 'file.rejected',
+  FILE_FATAL_MISMATCH = 'file.fatal_mismatch',
   MIGRATION_COMPLETED = 'migration.completed',
 }
 
@@ -45,5 +46,14 @@ export namespace SemanticEventPayloads {
      * List of errors found (by linters, tests, or reviewers).
      */
     errors: string[];
+  }
+
+  export interface FileFatalMismatch {
+    planId: string;
+    filePath: string;
+    /**
+     * Explanation of why the architecture was fundamentally violated.
+     */
+    reason: string;
   }
 }

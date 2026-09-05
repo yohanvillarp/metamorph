@@ -36,4 +36,9 @@ export interface StateRepository {
    * Retrieves all logged events.
    */
   getEvents(): Promise<any[]>;
+
+  /**
+   * Clears the current state to allow starting a new migration.
+   */
+  reset(): Promise<void>;
 }
