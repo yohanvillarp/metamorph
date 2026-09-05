@@ -17,8 +17,8 @@ class WhenFileDiscovered extends SituationSpecification {
 
 class WhenInferenceCompleted extends SituationSpecification {
   isSatisfiedBy({ event, participant }: SituationContext): boolean {
-    // Only react to our own inference completion
-    return event.type === 'inference.completed' && event.producerId === participant.getId();
+    // Only react to our own final answer
+    return event.type === 'model.answer' && event.producerId === participant.getId();
   }
 }
 

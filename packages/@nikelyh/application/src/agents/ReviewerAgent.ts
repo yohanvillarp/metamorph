@@ -17,7 +17,7 @@ class WhenFileMigrated extends SituationSpecification {
 
 class WhenReviewCompleted extends SituationSpecification {
   isSatisfiedBy({ event, participant }: SituationContext): boolean {
-    return event.type === 'inference.completed' && event.producerId === participant.getId();
+    return event.type === 'model.answer' && event.producerId === participant.getId();
   }
 }
 

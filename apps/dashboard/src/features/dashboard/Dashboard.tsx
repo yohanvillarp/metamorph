@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Activity, HardDrive, CheckCircle2, Clock, Terminal, AlertTriangle, LayoutDashboard, Cpu, ListTree, Radio } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { SwarmSwimlanes } from './SwarmSwimlanes';
 
 type Tab = 'overview' | 'swarm' | 'queue' | 'events';
 
@@ -40,22 +41,31 @@ export const Dashboard = () => {
   const failedTasks = latestPlan?.tasks.filter((t: any) => t.status === 'failed').length || 0;
 
   // Derive Agent Stats for the Chart
-  const chartData = useMemo(() => {
-    const counts = { Mapper: 0, Worker: 0, Reviewer: 0, System: 0 };
-    events.forEach(evt => {
-      const name = evt.eventName.toLowerCase();
-      if (name.includes('discover')) counts.Mapper++;
-      else if (name.includes('migrat') && !name.includes('started')) counts.Worker++;
-      else if (name.includes('review') || name.includes('approve')) counts.Reviewer++;
-      else counts.System++;
-    });
-    return [
-      { name: 'Mapper', events: counts.Mapper, color: '#facc15' }, // Yellow
-      { name: 'Worker', events: counts.Worker, color: '#93c5fd' }, // Blue
-      { name: 'Reviewer', events: counts.Reviewer, color: '#c084fc' }, // Purple
-      { name: 'System', events: counts.System, color: '#4ade80' } // Green
-    ];
+  const currentRunEvents = useMemo(() => {
+    if (events.length === 0) return [];
+    const latestPlanId = events[0].payload?.planId;
+    if (!latestPlanId) return events;
+    return events.filter(e => e.payload?.planId === latestPlanId);
   }, [events]);
+
+  const chartData = useMemo(() => {
+    const data = [
+      { name: 'System', events: 0, color: '#4ade80' },
+      { name: 'Mapper', events: 0, color: '#facc15' },
+      { name: 'Worker', events: 0, color: '#93c5fd' },
+      { name: 'Reviewer', events: 0, color: '#c084fc' },
+    ];
+    
+    currentRunEvents.forEach(evt => {
+      const name = evt.eventName.toLowerCase();
+      if (name.includes('discover')) data[1].events++;
+      else if (name.includes('migrat') && !name.includes('started')) data[2].events++;
+      else if (name.includes('review') || name.includes('approve') || name.includes('reject')) data[3].events++;
+      else data[0].events++;
+    });
+    
+    return data;
+  }, [currentRunEvents]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto min-h-screen flex flex-col gap-8">
@@ -155,25 +165,8 @@ export const Dashboard = () => {
             )}
 
             {activeTab === 'swarm' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                {chartData.map((agent) => (
-                  <div key={agent.name} className="neo-card flex flex-col justify-between h-48 border-4 transition-transform hover:-translate-y-1" style={{ borderColor: agent.color }}>
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-black text-2xl uppercase tracking-widest">{agent.name}</h3>
-                      <div className="neo-badge bg-black text-white dark:bg-white dark:text-black flex items-center gap-2">
-                        <span className="relative flex h-3 w-3">
-                          {agent.events > 0 && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
-                          <span className={`relative inline-flex rounded-full h-3 w-3 ${agent.events > 0 ? 'bg-green-500' : 'bg-gray-500'}`}></span>
-                        </span>
-                        {agent.events > 0 ? 'ACTIVE' : 'IDLE'}
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <p className="text-sm font-bold uppercase text-neo-text/70 border-b-2 border-neo-border pb-1 mb-2">Events Processed</p>
-                      <p className="text-4xl font-black font-mono">{agent.events}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <SwarmSwimlanes events={currentRunEvents} />
               </div>
             )}
 

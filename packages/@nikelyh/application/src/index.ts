@@ -40,7 +40,10 @@ export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = 
             
             // Only log our semantic events, ignore internal 'inference.*' noise
             if (event.type.includes('migration') || event.type.includes('file')) {
-              await repository.logEvent(event.type, event.payload || {});
+              await repository.logEvent(event.type, { 
+                ...(event.payload as any), 
+                producerId: event.producerId 
+              });
             }
           }
         }
