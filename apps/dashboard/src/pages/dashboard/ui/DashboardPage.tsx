@@ -85,7 +85,7 @@ export const DashboardPage = () => {
             <div className="space-y-4">
               <p>{data.message}</p>
               <p className="font-bold">Next steps:</p>
-              <pre className="bg-neo-border p-4 font-mono text-sm text-neo-bg overflow-x-auto whitespace-pre-wrap">
+              <pre className="bg-neo-border p-4 font-mono text-sm text-neo-bg overflow-x-auto whitespace-pre rounded-sm">
 {`cd ${latestPlan.targetPath}
 git fetch
 git checkout ${branch}`}
