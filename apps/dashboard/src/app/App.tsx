@@ -1,9 +1,9 @@
-import { Dashboard } from '@/features/dashboard/Dashboard'
+import { DashboardPage } from '@/pages/dashboard/ui/DashboardPage'
 
 export const App = () => {
   return (
     <div className="bg-neo-bg text-neo-text min-h-screen">
-      <Dashboard />
+      <DashboardPage />
     </div>
   )
 }
