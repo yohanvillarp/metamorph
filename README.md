@@ -14,8 +14,8 @@
 
 ---
 
-Metamorph is an experimental tool designed to assist developers in automating code refactoring and migrations.
+Metamorph is an experimental tool designed to assist developers in automating framework and technology migrations.
 
-The project is in an early stage and relies on the [Mozaik](https://mozaik.jigjoy.ai/) agent framework to explore how multiple intelligent agents can work simultaneously to analyze and adapt source code.
+The project is in an early stage and relies on the [Mozaik](https://mozaik.jigjoy.ai/) agent framework to explore how multiple intelligent agents can work simultaneously to safely migrate entire codebases.
 
 > Note: This project is currently in its early development phase (WIP).
