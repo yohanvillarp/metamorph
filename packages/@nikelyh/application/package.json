@@ -6,5 +6,8 @@
   "dependencies": {
     "@mozaik-ai/core": "^4.0.5",
     "@nikelyh/domain": "*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
   }
 }
