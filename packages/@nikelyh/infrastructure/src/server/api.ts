@@ -215,8 +215,8 @@ export async function createApiServer(
 
   if (fs.existsSync(publicDir)) {
     app.use(express.static(publicDir));
-    // Catch-all route for SPA
-    app.get('*', (_req: Request, res: Response) => {
+    // Catch-all route for SPA (Express v5 requires RegExp instead of string wildcards)
+    app.get(/^(.*)$/, (_req: Request, res: Response) => {
       res.sendFile(path.join(publicDir, 'index.html'));
     });
   }

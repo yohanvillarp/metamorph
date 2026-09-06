@@ -1,5 +1,11 @@
 # @nikelyh/metamorph
 
+## 2.0.5
+
+### Patch Changes
+
+- fix Express
+
 ## 2.0.4
 
 ### Patch Changes
