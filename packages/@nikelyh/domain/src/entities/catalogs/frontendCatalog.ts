@@ -18,7 +18,8 @@ export const frontendCatalog: MigrationCatalogEntry[] = [
     },
     architecturalRules: [
       'Migrate standard React routing (e.g. react-router-dom) to Next.js file-system routing in the "app" directory.',
-      'Convert the main entry point (usually main.tsx or index.tsx) into Next.js app/layout.tsx and app/page.tsx.',
+      'Convert the main entry point (usually main.tsx or index.tsx) and root component (App.tsx) into Next.js app/layout.tsx and app/page.tsx.',
+      'Delete the old App.tsx and main.tsx files entirely after moving their logic. Do not leave them exporting or importing the new files, as this causes cyclic dependencies.',
       'For components that use browser-only APIs (like window, useEffect, useState), add the "use client" directive at the very top of the file.',
       'Remove any react-router-dom <BrowserRouter>, <Routes>, and <Route> components.',
       'Replace react-router-dom <Link> components with Next.js next/link <Link> components.',
