@@ -4,7 +4,7 @@ import { FolderPicker } from '@/shared/ui/FolderPicker';
 import { FRAMEWORKS } from '@/entities/migration';
 import type { DetectedTech } from '@/entities/migration';
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = '';
 
 interface MigrationFormProps {
   onStart: (targetPath: string, fromFw: string, toFw: string) => void;

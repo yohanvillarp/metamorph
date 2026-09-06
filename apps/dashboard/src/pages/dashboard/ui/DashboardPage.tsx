@@ -8,7 +8,7 @@ import { SwarmSwimlanes } from '@/widgets/swarm-view/SwarmSwimlanes';
 import { Activity, Cpu, HardDrive, LayoutDashboard, Radio } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = '';
 
 export const DashboardPage = () => {
   const [plans, setPlans] = useState<MigrationPlan[]>([]);

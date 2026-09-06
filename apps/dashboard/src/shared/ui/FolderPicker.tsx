@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Folder, FolderOpen, ChevronRight, ArrowUp, FileCode2, Check, Loader2 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = '';
 
 interface BrowseEntry {
   name: string;
