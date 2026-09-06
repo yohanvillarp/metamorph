@@ -42,11 +42,11 @@ program
     // Supported migrations map
     const SUPPORTED_MIGRATIONS: Record<string, string[]> = {
       express: ['fastify', 'nestjs'],
-      fastify: ['nestjs', 'express'],
-      react: ['next'],
-      vue: ['react', 'next'],
-      angular: ['react', 'next'],
-      svelte: ['react', 'next'],
+      fastify: ['express', 'nestjs'],
+      nestjs: ['express', 'fastify'],
+      react: ['next', 'vue'],
+      next: ['react'],
+      vue: ['react'],
     };
 
     if (!from) {
