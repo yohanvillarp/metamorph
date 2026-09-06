@@ -1,5 +1,11 @@
 # @nikelyh/metamorph
 
+## 2.0.7
+
+### Patch Changes
+
+- f1085e9: Fix: Replaced dynamic CJS require for child_process with ESM dynamic import in PackageManagerAgent to resolve bundler crashes during migrations.
+
 ## 2.0.6
 
 ### Patch Changes
