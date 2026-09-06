@@ -1,5 +1,12 @@
 # @nikelyh/metamorph
 
+## 2.0.11
+
+### Patch Changes
+
+- - Added support for .tsx and .jsx files in migration discovery
+  - Fixed backup fallback directory path to prevent recursive copying errors
+
 ## 2.0.10
 
 ### Patch Changes
