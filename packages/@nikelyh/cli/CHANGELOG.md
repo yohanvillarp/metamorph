@@ -1,5 +1,11 @@
 # @nikelyh/metamorph
 
+## 2.0.4
+
+### Patch Changes
+
+- 008a905: Fix: Resolved UI path resolution error where the static Dashboard was not being served from the correct dist directory.
+
 ## 2.0.3
 
 ### Patch Changes
