@@ -207,7 +207,7 @@ export async function createApiServer(
   // ─── STATIC SPA SERVING ──────────────────────────────────
   const path = await import('node:path');
   const fs = await import('node:fs');
-  const publicDir = path.join(__dirname, '../public');
+  const publicDir = path.join(import.meta.dirname, '../public');
 
   if (fs.existsSync(publicDir)) {
     app.use(express.static(publicDir));

@@ -1,5 +1,11 @@
 # @nikelyh/metamorph
 
+## 2.0.2
+
+### Patch Changes
+
+- Update CLI README with centralized documentation links and correct supported migration mappings.
+
 ## 2.0.1
 
 ### Patch Changes
