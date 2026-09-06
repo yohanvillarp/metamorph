@@ -93,7 +93,7 @@ const reviewFileProcessor = {
           specification: new WhenAnythingHappens(),
           processor: {
             async apply({ event: anyEvent, participant: anyParticipant }) {
-              console.log(`[DEBUG:ReviewerAgent:${reviewerId}:CATCH_ALL] Event -> type: "${anyEvent.type}", producerId: "${anyEvent.producerId}", myId: "${anyParticipant.getId()}", payload keys: ${Object.keys(anyEvent.payload || {}).join(',')}`);
+              console.log(`[DEBUG:ReviewerAgent:${reviewerId}:CATCH_ALL] Event -> type: "${anyEvent.type}", producerId: "${anyEvent.producerId}", myId: "${anyParticipant.getId()}", payload keys: ${Object.keys((anyEvent.payload as Record<string, unknown>) || {}).join(',')}`);
             }
           }
         },
@@ -102,7 +102,7 @@ const reviewFileProcessor = {
           processor: {
             async apply({ event, participant: tempParticipant }) {
               console.log(`[DEBUG:ReviewerAgent:${reviewerId}] model.answer RECEIVED!`);
-              const answerItem = (event.payload as any).answer;
+              const answerItem = (event.payload as Record<string, any>).answer;
               // Extract text: Mozaik puts it in answerItem.content.text, not answerItem.text
               const answerText = answerItem?.content?.text || answerItem?.text || null;
               console.log(`[DEBUG:ReviewerAgent:${reviewerId}] answerText:`, answerText);
@@ -268,12 +268,13 @@ const reviewFileProcessor = {
           resolve();
         }
       }, 45000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`[ReviewerAgent:${reviewerId}] Sync error:`, error);
       if (!isDone) {
         const { resolveRuntime } = await import('../runtime');
         const runtime = resolveRuntime();
-        await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', error?.message || 'Sync error');
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', errorMessage || 'Sync error');
         leave(tempAgent);
         resolve();
       }

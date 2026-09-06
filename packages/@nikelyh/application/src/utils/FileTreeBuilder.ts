@@ -25,6 +25,10 @@ export function getCommonBaseDir(filePaths: string[]): string {
   return commonPath;
 }
 
+interface TreeNode {
+  [key: string]: TreeNode | null;
+}
+
 /**
  * Transforms a list of absolute file paths into a simple ASCII tree representation.
  */
@@ -42,7 +46,7 @@ export function buildFileTree(filePaths: string[]): string {
   if (relativePaths.length === 0) return 'No files found.';
 
   // Build tree structure
-  const tree: any = {};
+  const tree: TreeNode = {};
   
   for (const relPath of relativePaths) {
     const parts = relPath.split(path.sep);
@@ -61,7 +65,8 @@ export function buildFileTree(filePaths: string[]): string {
   // Generate ASCII representation
   let output = `/\n`;
   
-  function renderTree(node: any, prefix: string = '') {
+  function renderTree(node: TreeNode | null, prefix: string = '') {
+    if (node === null) return;
     const keys = Object.keys(node);
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];

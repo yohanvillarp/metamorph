@@ -62,8 +62,9 @@ program
       await new Promise((resolve) => setTimeout(resolve, 20000));
       console.log(chalk.green(`\n✅ Migration simulation finished.`));
       process.exit(0);
-    } catch (error: any) {
-      spinner.fail(`Migration failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      spinner.fail(`Migration failed: ${errorMessage}`);
       process.exit(1);
     }
   });
@@ -108,8 +109,9 @@ program
         // Auto open browser
         open(`http://localhost:${port}`);
       });
-    } catch (error: any) {
-      spinner.fail(`Failed to start: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      spinner.fail(`Failed to start: ${errorMessage}`);
       process.exit(1);
     }
   });

@@ -112,7 +112,7 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
               console.error(`[WorkerAgent:${tempParticipant.getId()}] Error reading file:`, e);
             }
             
-            await repository.updateTaskStatus(planId, filePath, 'completed' as any);
+            await repository.updateTaskStatus(planId, filePath, 'completed');
             
             sendEvent(
               {
@@ -156,10 +156,11 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
         resolve();
       }
     }, 45000);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[WorkerAgent:${tempAgent.getId()}] Sync error:`, error);
     if (!isDone) {
-      await repository.updateTaskStatus(planId, filePath, 'failed', error?.message || 'Sync error');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await repository.updateTaskStatus(planId, filePath, 'failed', errorMessage || 'Sync error');
       leave(tempAgent);
       resolve();
     }

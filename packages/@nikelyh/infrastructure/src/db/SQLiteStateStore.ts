@@ -7,6 +7,31 @@ import {
   TaskStatus,
 } from '@nikelyh/domain';
 
+interface PlanRow {
+  id: string;
+  run_id: string;
+  target_path: string;
+  source_framework: string;
+  target_framework: string;
+  rules_json: string;
+  created_at: string;
+}
+
+interface TaskRow {
+  plan_id: string;
+  file_path: string;
+  status: string;
+  dependencies_json: string;
+  error: string | null;
+}
+
+interface EventRow {
+  id: number;
+  event_name: string;
+  payload_json: string;
+  timestamp: string;
+}
+
 /**
  * Implementation of StateRepository using Node.js built-in node:sqlite.
  * This runs locally on the user's machine to persist the Event Bus and Migration State.
@@ -103,14 +128,14 @@ export class SQLiteStateStore implements StateRepository {
 
   async getPlan(id: string): Promise<MigrationPlan | null> {
     const stmtPlan = this.db.prepare(`SELECT * FROM plans WHERE id = ?`);
-    const planRow = stmtPlan.get(id) as any;
+    const planRow = stmtPlan.get(id) as unknown as PlanRow | undefined;
 
     if (!planRow) {
       return null;
     }
 
     const stmtTasks = this.db.prepare(`SELECT * FROM tasks WHERE plan_id = ?`);
-    const taskRows = stmtTasks.all(id) as any[];
+    const taskRows = stmtTasks.all(id) as unknown as TaskRow[];
 
     return {
       id: planRow.id,
@@ -126,7 +151,7 @@ export class SQLiteStateStore implements StateRepository {
         filePath: row.file_path,
         status: row.status as TaskStatus,
         dependencies: JSON.parse(row.dependencies_json),
-        error: row.error,
+        error: row.error || undefined,
       })),
     };
   }
@@ -146,7 +171,7 @@ export class SQLiteStateStore implements StateRepository {
     stmt.run(planId, filePath, status, error || null);
   }
 
-  async logEvent(eventName: string, payload: any): Promise<void> {
+  async logEvent(eventName: string, payload: Record<string, unknown>): Promise<void> {
     const stmt = this.db.prepare(`
       INSERT INTO events (event_name, payload_json, timestamp)
       VALUES (?, ?, ?)
@@ -156,10 +181,10 @@ export class SQLiteStateStore implements StateRepository {
 
   async getAllPlans(): Promise<MigrationPlan[]> {
     const stmtPlans = this.db.prepare(`SELECT * FROM plans ORDER BY created_at DESC`);
-    const planRows = stmtPlans.all() as any[];
+    const planRows = stmtPlans.all() as unknown as PlanRow[];
 
     const stmtTasks = this.db.prepare(`SELECT * FROM tasks`);
-    const taskRows = stmtTasks.all() as any[];
+    const taskRows = stmtTasks.all() as unknown as TaskRow[];
 
     return planRows.map((planRow) => {
       const planTasks = taskRows.filter((t) => t.plan_id === planRow.id);
@@ -177,15 +202,15 @@ export class SQLiteStateStore implements StateRepository {
           filePath: row.file_path,
           status: row.status as TaskStatus,
           dependencies: JSON.parse(row.dependencies_json),
-          error: row.error,
+          error: row.error || undefined,
         })),
       };
     });
   }
 
-  async getEvents(): Promise<any[]> {
+  async getEvents(): Promise<Array<{ id: number; eventName: string; payload: Record<string, unknown>; timestamp: Date }>> {
     const stmt = this.db.prepare(`SELECT * FROM events ORDER BY id DESC LIMIT 100`);
-    const rows = stmt.all() as any[];
+    const rows = stmt.all() as unknown as EventRow[];
     return rows.map((row) => ({
       id: row.id,
       eventName: row.event_name,

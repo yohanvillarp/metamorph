@@ -48,8 +48,11 @@ export class MigrationIntegrator {
     // 1. Create a new branch (or reset if it already exists)
     try {
       execSync(`git checkout -B ${branchName}`, { cwd: targetPath, stdio: 'ignore' });
-    } catch (e: any) {
-      throw new Error(`Failed to create/reset git branch ${branchName}: ${e.message}`);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        throw new Error(`Failed to create/reset git branch ${branchName}: ${e.message}`);
+      }
+      throw new Error(`Failed to create/reset git branch ${branchName}: ${String(e)}`);
     }
 
     // 2. Overwrite files
@@ -60,8 +63,11 @@ export class MigrationIntegrator {
       execSync(`git add .`, { cwd: targetPath, stdio: 'ignore' });
       // Use --allow-empty in case the user applies the exact same migration twice
       execSync(`git commit --allow-empty -m "chore: apply metamorph ai migration (${runId})"`, { cwd: targetPath, stdio: 'ignore' });
-    } catch (e: any) {
-      throw new Error(`Failed to commit changes to branch ${branchName}: ${e.message}`);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        throw new Error(`Failed to commit changes to branch ${branchName}: ${e.message}`);
+      }
+      throw new Error(`Failed to commit changes to branch ${branchName}: ${String(e)}`);
     }
 
     return `Successfully applied migration via Git to branch: ${branchName}`;

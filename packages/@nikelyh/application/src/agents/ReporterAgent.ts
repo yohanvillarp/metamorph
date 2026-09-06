@@ -7,7 +7,7 @@ import {
   SituationHandler,
   Agent,
 } from '@mozaik-ai/core';
-import { SemanticEventName } from '@nikelyh/domain';
+import { SemanticEventName, SemanticEventPayloads } from '@nikelyh/domain';
 
 // --- Specifications ---
 class WhenMigrationStarted extends SituationSpecification {
@@ -30,7 +30,7 @@ class WhenMigrationCompleted extends SituationSpecification {
 }
 
 // --- Helper ---
-function appendToReport(shadowDir: string, content: string) {
+function appendToReport(shadowDir: string | undefined, content: string) {
   if (!shadowDir) return;
   const reportPath = path.join(shadowDir, 'migration-report.md');
   try {
@@ -43,10 +43,12 @@ function appendToReport(shadowDir: string, content: string) {
 // --- Processors ---
 const startedProcessor = {
   async apply({ event }: SituationContext) {
-    const p = event.payload as any;
-    if (!p.shadowWorkspacePath) return;
+    const p = event.payload as SemanticEventPayloads.MigrationStarted;
+    if (!('shadowWorkspacePath' in p)) return;
+    const shadowPath = (p as any).shadowWorkspacePath; // or add to domain if needed, keeping simple for now
+    if (!shadowPath) return;
     
-    const reportPath = path.join(p.shadowWorkspacePath, 'migration-report.md');
+    const reportPath = path.join(shadowPath, 'migration-report.md');
     const header = `# Metamorph Migration Report
 **Plan ID**: ${p.planId}
 **Date Started**: ${new Date().toLocaleString()}
@@ -62,7 +64,7 @@ const startedProcessor = {
 
 const migratedProcessor = {
   async apply({ event }: SituationContext) {
-    const p = event.payload as any;
+    const p = event.payload as SemanticEventPayloads.FileMigrated;
     // Assuming shadowWorkspacePath is globally available or we can resolve it. 
     // Since payloads like FILE_MIGRATED might not contain shadowWorkspacePath, 
     // we fetch it via the runtime state if needed.
@@ -78,7 +80,7 @@ const migratedProcessor = {
 
 const reviewedProcessor = {
   async apply({ event }: SituationContext) {
-    const p = event.payload as any;
+    const p = event.payload as { planId: string; filePath: string; };
     const { resolveRuntime } = await import('../runtime');
     const runtime = resolveRuntime();
     const plan = await runtime.state.repository.getPlan(p.planId);
@@ -89,7 +91,7 @@ const reviewedProcessor = {
 
 const rejectedProcessor = {
   async apply({ event }: SituationContext) {
-    const p = event.payload as any;
+    const p = event.payload as SemanticEventPayloads.FileRejected;
     const { resolveRuntime } = await import('../runtime');
     const runtime = resolveRuntime();
     const plan = await runtime.state.repository.getPlan(p.planId);
@@ -100,7 +102,7 @@ const rejectedProcessor = {
 
 const fatalProcessor = {
   async apply({ event }: SituationContext) {
-    const p = event.payload as any;
+    const p = event.payload as SemanticEventPayloads.FileFatalMismatch;
     const { resolveRuntime } = await import('../runtime');
     const runtime = resolveRuntime();
     const plan = await runtime.state.repository.getPlan(p.planId);
@@ -111,18 +113,20 @@ const fatalProcessor = {
 
 const completedProcessor = {
   async apply({ event }: SituationContext) {
-    const p = event.payload as any;
+    const p = event.payload as { planId: string; };
     const { resolveRuntime } = await import('../runtime');
     const runtime = resolveRuntime();
     const plan = await runtime.state.repository.getPlan(p.planId);
     if (!plan) return;
+    const totalFiles = plan.tasks ? plan.tasks.length : 0;
+    const migratedFiles = plan.tasks ? plan.tasks.filter(t => t.status === 'completed').length : 0;
     
     const footer = `
 ---
 ## Migration Completed
 **Date Finished**: ${new Date().toLocaleString()}
-**Total Files**: ${plan.totalFiles}
-**Successfully Migrated**: ${plan.migratedFiles}
+**Total Files**: ${totalFiles}
+**Successfully Migrated**: ${migratedFiles}
 `;
     appendToReport(plan.targetPath, footer);
   }
