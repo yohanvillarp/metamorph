@@ -1,5 +1,11 @@
 # @nikelyh/metamorph
 
+## 2.0.8
+
+### Patch Changes
+
+- 211ec10: Feat: Added explicit warnings in CLI when no LLM API key is detected in the environment.
+
 ## 2.0.7
 
 ### Patch Changes
