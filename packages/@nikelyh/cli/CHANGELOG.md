@@ -1,5 +1,11 @@
 # @nikelyh/metamorph
 
+## 2.0.6
+
+### Patch Changes
+
+- b605c2f: Fix: Removed hardcoded localhost:3000 API routes from Dashboard components to properly resolve dynamic CLI server ports.
+
 ## 2.0.5
 
 ### Patch Changes
