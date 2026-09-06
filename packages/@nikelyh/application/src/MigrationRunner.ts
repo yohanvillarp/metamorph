@@ -67,7 +67,9 @@ export class MigrationRunner {
       runId: runId,
       profile: { source: request.from, target: request.to },
       targetPath: request.targetPath,
-      tasks: [],
+      tasks: [
+        { filePath: 'system:package_manager', status: 'pending' }
+      ],
       createdAt: new Date(),
     };
     await this.store.savePlan(plan);

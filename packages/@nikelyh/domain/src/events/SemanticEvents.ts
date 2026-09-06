@@ -12,6 +12,7 @@ export enum SemanticEventName {
   FILE_REJECTED = 'file.rejected',
   FILE_FATAL_MISMATCH = 'file.fatal_mismatch',
   MIGRATION_COMPLETED = 'migration.completed',
+  SYSTEM_LOG = 'system.log',
 }
 
 /**
@@ -55,5 +56,11 @@ export namespace SemanticEventPayloads {
      * Explanation of why the architecture was fundamentally violated.
      */
     reason: string;
+  }
+
+  export interface SystemLog {
+    planId: string;
+    message: string;
+    level: 'info' | 'warning' | 'error';
   }
 }

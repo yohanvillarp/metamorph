@@ -5,8 +5,8 @@ import { MigrationForm } from '@/widgets/migration-form/MigrationForm';
 import { OverviewStats } from '@/widgets/overview/OverviewStats';
 import { MigrationQueue } from '@/widgets/queue/MigrationQueue';
 import { SwarmSwimlanes } from '@/widgets/swarm-view/SwarmSwimlanes';
-import { Activity, Cpu, HardDrive, LayoutDashboard, Radio } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Cpu, HardDrive, LayoutDashboard, Radio, Bug } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const API_BASE = '';
 
@@ -14,7 +14,6 @@ export const DashboardPage = () => {
   const [plans, setPlans] = useState<MigrationPlan[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [loading, setLoading] = useState(true);
   
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
@@ -33,8 +32,6 @@ export const DashboardPage = () => {
       setEvents(eventsData.reverse());
     } catch (error) {
       console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -167,11 +164,23 @@ npm install`}
   const totalTasks = latestPlan?.tasks?.length || 0;
   const isFinished = totalTasks > 0 && (completedTasks + failedTasks === totalTasks);
 
+  const notifiedRunId = useRef<string | null>(null);
+
   useEffect(() => {
-    if (isFinished && activeTab === 'swarm') {
-      setActiveTab('overview');
+    if (isFinished && latestPlan && notifiedRunId.current !== latestPlan.runId) {
+      notifiedRunId.current = latestPlan.runId;
+      showAlert(
+        'Migration Finished 🚀',
+        <div className="space-y-4 text-center">
+          <p>All agents have successfully finished their work, including dependency installation.</p>
+          <p className="font-bold">Please review the Event Log and click <span className="bg-green-400 text-black px-2 py-1 uppercase tracking-widest text-xs">Apply Migration</span> to commit the changes, or <span className="bg-red-400 text-white px-2 py-1 uppercase tracking-widest text-xs">Discard</span> to abort.</p>
+        </div>
+      );
+      if (activeTab === 'swarm') {
+        setActiveTab('overview');
+      }
     }
-  }, [isFinished, activeTab]);
+  }, [isFinished, activeTab, latestPlan, showAlert]);
 
   // Chart Data
   const chartData = useMemo(() => {
@@ -251,9 +260,14 @@ npm install`}
               >
                 + New Migration
               </button>
-              <div className={`font-black text-sm uppercase px-4 py-2 flex items-center gap-2 border-2 border-neo-border ${loading ? 'bg-yellow-300' : 'bg-green-400'}`}>
-                <Activity size={18} /> {loading ? 'CONNECTING...' : 'LIVE'}
-              </div>
+              <a 
+                href="https://github.com/yohanvillarp/metamorph/discussions/new?category=q-a"
+                target="_blank"
+                rel="noreferrer"
+                className="neo-btn font-black text-sm uppercase px-4 py-2 flex items-center gap-2 hover:bg-yellow-300 hover:text-black transition-colors"
+              >
+                <Bug size={16} /> Report Issue
+              </a>
             </div>
           </header>
 

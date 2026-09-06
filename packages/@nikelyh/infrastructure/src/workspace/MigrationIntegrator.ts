@@ -34,12 +34,7 @@ export class MigrationIntegrator {
   }
 
   private isGitRepo(targetPath: string): boolean {
-    try {
-      execSync('git rev-parse --is-inside-work-tree', { cwd: targetPath, stdio: 'ignore' });
-      return true;
-    } catch {
-      return false;
-    }
+    return fs.existsSync(path.join(targetPath, '.git'));
   }
 
   private async applyWithGit(runId: string, shadowDir: string, targetPath: string): Promise<string> {
