@@ -1,5 +1,14 @@
 # @nikelyh/metamorph
 
+## 2.0.10
+
+### Patch Changes
+
+- aa315e4: - Added GitHub Discussion template and report button to UI
+  - Fixed git apply branch bug for playgrounds
+  - Synchronized PackageManagerAgent with migration state
+  - Removed UI blocking on terminal logs by suppressing NPM standard output
+
 ## 2.0.9
 
 ### Patch Changes
