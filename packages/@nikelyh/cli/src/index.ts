@@ -15,7 +15,8 @@ import {
   createApiServer,
   MigrationIntegrator,
   ShadowWorkspace,
-  detectTechnologies
+  detectTechnologies,
+  createCheckProjectDiagnosticsTool
 } from '@nikelyh/infrastructure';
 import { MigrationRunner } from '@nikelyh/application';
 
@@ -105,7 +106,8 @@ program
         createWriteFileTool(shadowBase),
         createRenameFileTool(shadowBase),
         createCreateFileTool(shadowBase),
-        createDeleteFileTool(shadowBase)
+        createDeleteFileTool(shadowBase),
+        createCheckProjectDiagnosticsTool(shadowBase)
       ];
       const runner = new MigrationRunner(store, tools);
 
@@ -256,7 +258,8 @@ program
         createWriteFileTool(shadowBase),
         createRenameFileTool(shadowBase),
         createCreateFileTool(shadowBase),
-        createDeleteFileTool(shadowBase)
+        createDeleteFileTool(shadowBase),
+        createCheckProjectDiagnosticsTool(shadowBase)
       ];
       const runner = new MigrationRunner(store, tools);
 

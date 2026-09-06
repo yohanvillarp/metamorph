@@ -147,11 +147,11 @@ const managePackagesProcessor = {
           type: SemanticEventName.SYSTEM_LOG as any,
           producerId: participant.getId(),
           occurredAt: new Date(),
-          payload: { planId: payload.planId, message: 'All agents have finished their work. Please review the results and click APPLY MIGRATION or DISCARD.', level: 'info' }
+          payload: { planId: payload.planId, message: 'All file tasks finished. Entering Integration Phase to resolve broken cross-file dependencies...', level: 'info' }
         }, participant.getId());
 
         sendEvent({
-          type: SemanticEventName.MIGRATION_COMPLETED,
+          type: SemanticEventName.PHASE_INTEGRATION_STARTED,
           producerId: participant.getId(),
           occurredAt: new Date(),
           payload: { planId: payload.planId },

@@ -11,6 +11,7 @@ export enum SemanticEventName {
   FILE_REVIEWED = 'file.reviewed',
   FILE_REJECTED = 'file.rejected',
   FILE_FATAL_MISMATCH = 'file.fatal_mismatch',
+  PHASE_INTEGRATION_STARTED = 'phase.integration_started',
   MIGRATION_COMPLETED = 'migration.completed',
   SYSTEM_LOG = 'system.log',
 }

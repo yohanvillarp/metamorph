@@ -5,6 +5,7 @@ import { createWorkerAgent } from './agents/WorkerAgent';
 import { createReviewerAgent } from './agents/ReviewerAgent';
 import { createPackageManagerAgent } from './agents/PackageManagerAgent';
 import { createReporterAgent } from './agents/ReporterAgent';
+import { createIntegrationAgent } from './agents/IntegrationAgent';
 
 import { Tool, createAgent, SituationSpecification, supportedModels } from '@mozaik-ai/core';
 
@@ -41,7 +42,7 @@ export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = 
             const repository = runtime.state.repository;
             
             // Only log our semantic events, ignore internal 'inference.*' noise
-            if (event.type.includes('migration') || event.type.includes('file')) {
+            if (event.type.includes('migration') || event.type.includes('file') || event.type.includes('phase')) {
               await repository.logEvent(event.type, { 
                 ...(event.payload as Record<string, unknown>), 
                 producerId: event.producerId 
@@ -60,6 +61,10 @@ export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = 
   const reviewer = createReviewerAgent(tools);
   const packageManager = createPackageManagerAgent();
   const reporter = createReporterAgent();
+  
+  // Create integration agent and give it all AST tools (plus the linter tool which we'll add in CLI)
+  const integrationAgent = createIntegrationAgent();
+  for (const t of tools) integrationAgent.addTool(t);
 
   // 3. Connect them to the Event Bus
   join(mapper);
@@ -67,8 +72,9 @@ export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = 
   join(reviewer);
   join(packageManager);
   join(reporter);
+  join(integrationAgent);
 
-  console.log(`[App] Mozaik initialized. Agents joined: Mapper, Worker, Reviewer, PackageManager, Reporter`);
+  console.log(`[App] Mozaik initialized. Agents joined: Mapper, Worker, Reviewer, PackageManager, Reporter, IntegrationAgent`);
 
   return {
     mapperId: mapper.getId(),
@@ -83,4 +89,5 @@ export * from './agents/WorkerAgent';
 export * from './agents/ReviewerAgent';
 export * from './agents/PackageManagerAgent';
 export * from './agents/ReporterAgent';
+export * from './agents/IntegrationAgent';
 export * from './MigrationRunner';
