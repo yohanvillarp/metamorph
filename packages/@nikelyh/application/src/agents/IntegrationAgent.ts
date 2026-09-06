@@ -20,13 +20,8 @@ const integrationProcessor = {
     const payload = event.payload as { planId: string };
     console.log(`[IntegrationAgent] Started integration phase for plan ${payload.planId}`);
     
-    // We get the tools from the participant's metadata or global context 
-    // Usually the CLI injects the tools into the agent during bootstrap
-    
-    // Let's spawn a temp agent or use the current one to run the loop
-    // But since Mozaik relies on the agent itself having the tools, the IntegrationAgent 
-    // created by the factory will already have them.
-    const tools = participant.getTools();
+    const agent = participant as unknown as Agent;
+    const tools = agent.getTools();
     
     const prompt = `The migration phase is complete, and we are now in the Integration Phase.
 Your task is to verify that all cross-file dependencies (imports and exports) are correct.
@@ -50,7 +45,7 @@ Step 5: When check_project_diagnostics reports no local errors, respond with a f
 
       await runLoop(participant.getId(), prompt, {
         model: 'gemini-2.5-pro', // or use the default provided by runtime
-        context: participant.getMemory().getContext(),
+        context: agent.getMemory().getContext(),
         tools: tools,
       });
 
@@ -97,12 +92,12 @@ const manageIntegrationHandler: SituationHandler = {
 /**
  * Creates the IntegrationAgent instance.
  */
-export function createIntegrationAgent(): Agent {
+export function createIntegrationAgent(tools: Tool[] = []): Agent {
   return createAgent({
     name: 'IntegrationAgent',
     capabilities: ['integration_testing', 'code_repair'],
     instruction: 'You are the Integration Agent. You ensure that all files in the project work together by resolving broken imports and exports after a migration.',
-    tools: [], // tools are injected at bootstrap
+    tools: tools,
     handlers: [manageIntegrationHandler],
   });
 }

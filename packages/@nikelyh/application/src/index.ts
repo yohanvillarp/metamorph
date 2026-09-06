@@ -63,8 +63,7 @@ export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = 
   const reporter = createReporterAgent();
   
   // Create integration agent and give it all AST tools (plus the linter tool which we'll add in CLI)
-  const integrationAgent = createIntegrationAgent();
-  for (const t of tools) integrationAgent.addTool(t);
+  const integrationAgent = createIntegrationAgent(tools);
 
   // 3. Connect them to the Event Bus
   join(mapper);

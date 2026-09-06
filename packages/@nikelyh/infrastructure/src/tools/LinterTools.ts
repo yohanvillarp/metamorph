@@ -7,13 +7,15 @@ import * as path from 'path';
  * Filters out external module errors (node_modules missing) since we don't install them during migration.
  */
 export const createCheckProjectDiagnosticsTool = (shadowBase: string): Tool => ({
+  type: 'function',
   name: 'check_project_diagnostics',
   description: 'Checks the project for TypeScript errors like broken imports/exports. Call this to see if the project has cross-file integration issues. Returns a list of errors.',
   parameters: {
     type: 'object',
     properties: {}, // No params needed, it checks the whole shadow workspace
   },
-  execute: async () => {
+  strict: true,
+  invoke: async () => {
     try {
       const tsConfigPath = path.join(shadowBase, 'tsconfig.json');
       let project: Project;
@@ -71,7 +73,8 @@ export const createCheckProjectDiagnosticsTool = (shadowBase: string): Tool => (
 
       const formattedErrors = relevantErrors.map(d => {
         const file = d.getSourceFile();
-        const line = file && d.getStart() ? file.getLineAndColumnAtPos(d.getStart()).line : 'unknown';
+        const start = d.getStart();
+        const line = file && start !== undefined ? file.getLineAndColumnAtPos(start).line : 'unknown';
         const filePath = file ? path.relative(shadowBase, file.getFilePath()) : 'unknown path';
         return `[TS${d.getCode()}] ${filePath}:${line} - ${d.getMessageText().toString()}`;
       }).join('\n');
