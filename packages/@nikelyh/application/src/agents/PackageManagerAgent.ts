@@ -60,8 +60,18 @@ const managePackagesProcessor = {
     // 2. Manage dependencies safely using npm commands
     const packageJsonPath = path.join(shadowDir, 'package.json');
     if (fs.existsSync(packageJsonPath)) {
-      const { execSync } = await import('node:child_process');
-      const execOpts = { cwd: shadowDir, stdio: 'inherit' as const };
+      const { spawn } = await import('node:child_process');
+      
+      const runCommandAsync = (cmd: string, args: string[]): Promise<void> => {
+        return new Promise((resolve, reject) => {
+          const proc = spawn(cmd, args, { cwd: shadowDir, stdio: 'inherit', shell: true });
+          proc.on('close', (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`Command ${cmd} ${args.join(' ')} failed with code ${code}`));
+          });
+          proc.on('error', reject);
+        });
+      };
 
       try {
         // Remove old dependencies
@@ -71,20 +81,20 @@ const managePackagesProcessor = {
         
         if (toRemove.length > 0) {
           console.log(`[PackageManagerAgent] Uninstalling: ${toRemove.join(' ')}`);
-          execSync(`npm uninstall ${toRemove.join(' ')}`, execOpts);
+          await runCommandAsync('npm', ['uninstall', ...toRemove]);
         }
 
         // Add new dependencies
         if (catalogEntry.dependenciesToAdd && Object.keys(catalogEntry.dependenciesToAdd).length > 0) {
           const deps = Object.entries(catalogEntry.dependenciesToAdd).map(([pkg, ver]) => `${pkg}@${ver}`);
           console.log(`[PackageManagerAgent] Installing dependencies: ${deps.join(' ')}`);
-          execSync(`npm install ${deps.join(' ')}`, execOpts);
+          await runCommandAsync('npm', ['install', ...deps]);
         }
 
         if (catalogEntry.devDependenciesToAdd && Object.keys(catalogEntry.devDependenciesToAdd).length > 0) {
           const devDeps = Object.entries(catalogEntry.devDependenciesToAdd).map(([pkg, ver]) => `${pkg}@${ver}`);
           console.log(`[PackageManagerAgent] Installing devDependencies: ${devDeps.join(' ')}`);
-          execSync(`npm install -D ${devDeps.join(' ')}`, execOpts);
+          await runCommandAsync('npm', ['install', '-D', ...devDeps]);
         }
 
         console.log(`[PackageManagerAgent] Successfully updated dependencies via npm.`);

@@ -83,7 +83,11 @@ program
     console.log(chalk.gray(`Target: ${targetPath} | ${from} -> ${to}\n`));
 
     if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-      console.log(chalk.yellow(`⚠️ WARNING: No LLM API key detected.\n`));
+      console.log(chalk.yellow(`\n⚠️ WARNING: No LLM API key detected (OPENAI_API_KEY or ANTHROPIC_API_KEY).`));
+      console.log(chalk.yellow(`AI Worker agents will fail if you don't configure a valid key before starting the migration.`));
+      console.log(chalk.yellow(`Please set your API key as an environment variable in your terminal. For example:`));
+      console.log(chalk.yellow(`  Linux/macOS: export OPENAI_API_KEY="sk-..."`));
+      console.log(chalk.yellow(`  Windows (PowerShell): $env:OPENAI_API_KEY="sk-..."\n`));
     }
 
     const spinner = ora('Initializing...').start();
@@ -224,6 +228,14 @@ program
       const open = (await import('open')).default;
       
       const port = await getPort({ port: desiredPort });
+
+      if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+        console.log(chalk.yellow(`\n⚠️ WARNING: No LLM API key detected (OPENAI_API_KEY or ANTHROPIC_API_KEY).`));
+        console.log(chalk.yellow(`AI Worker agents will fail if you don't configure a valid key before starting the migration.`));
+        console.log(chalk.yellow(`Please set your API key as an environment variable in your terminal. For example:`));
+        console.log(chalk.yellow(`  Linux/macOS: export OPENAI_API_KEY="sk-..."`));
+        console.log(chalk.yellow(`  Windows (PowerShell): $env:OPENAI_API_KEY="sk-..."\n`));
+      }
       
       const store = new SQLiteStateStore('.metamorph');
       const tools = [
