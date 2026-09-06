@@ -1,19 +1,24 @@
 {
-  "name": "@nikelyh/cli",
-  "version": "1.0.0",
+  "name": "@nikelyh/metamorph",
+  "version": "2.0.1",
   "main": "dist/index.js",
   "bin": {
     "metamorph": "./bin/metamorph.js"
   },
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.7.1",
-    "@nikelyh/application": "*",
-    "@nikelyh/infrastructure": "*",
     "chalk": "^6.0.0",
     "commander": "^15.0.0",
     "cors": "^2.8.6",
@@ -24,6 +29,8 @@
     "ora": "^9.4.1"
   },
   "devDependencies": {
+    "@nikelyh/application": "*",
+    "@nikelyh/infrastructure": "*",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/fs-extra": "^11.0.4",

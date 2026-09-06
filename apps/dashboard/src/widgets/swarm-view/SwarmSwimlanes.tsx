@@ -59,8 +59,9 @@ export const SwarmSwimlanes = ({ events }: { events: any[] }) => {
   }
 
   return (
-    <div className="neo-card p-0 overflow-hidden bg-neo-surface">
-      <div className="grid grid-cols-4 border-b-4 border-neo-border bg-white font-black text-sm uppercase tracking-widest">
+    <div className="neo-card p-0 overflow-x-auto bg-neo-surface">
+      <div className="min-w-[800px]">
+        <div className="grid grid-cols-4 border-b-4 border-neo-border bg-white font-black text-sm uppercase tracking-widest">
         <div className="p-4 border-r-4 border-neo-border flex items-center gap-2"><Search size={18} className="text-yellow-500" /> Discovered</div>
         <div className="p-4 border-r-4 border-neo-border flex items-center gap-2"><Play size={18} className="text-blue-500" /> Migrating</div>
         <div className="p-4 border-r-4 border-neo-border flex items-center gap-2"><UserCircle2 size={18} className="text-purple-500" /> Reviewing</div>
@@ -118,6 +119,7 @@ export const SwarmSwimlanes = ({ events }: { events: any[] }) => {
             
           </div>
         ))}
+      </div>
       </div>
     </div>
   );
