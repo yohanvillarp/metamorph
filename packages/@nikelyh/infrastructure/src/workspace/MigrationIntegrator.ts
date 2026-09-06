@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import * as os from 'os';
 import { ShadowWorkspace } from './ShadowWorkspace';
 
 export class MigrationIntegrator {
@@ -70,7 +71,7 @@ export class MigrationIntegrator {
 
   private async applyWithZipFallback(runId: string, shadowDir: string, targetPath: string): Promise<string> {
     // For now, since adm-zip/archiver is not installed, we will just copy to a backup folder.
-    const backupDir = path.resolve(process.cwd(), `.metamorph/backups/${runId}_backup`);
+    const backupDir = path.resolve(os.tmpdir(), 'metamorph_backups', `${runId}_backup`);
     
     fs.ensureDirSync(backupDir);
     
