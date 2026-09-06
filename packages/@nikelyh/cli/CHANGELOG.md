@@ -1,5 +1,11 @@
 # @nikelyh/metamorph
 
+## 2.0.9
+
+### Patch Changes
+
+- Fix: Changed API key warning to a hard block and added `.env` instructions to prevent downstream agent crashes.
+
 ## 2.0.8
 
 ### Patch Changes
