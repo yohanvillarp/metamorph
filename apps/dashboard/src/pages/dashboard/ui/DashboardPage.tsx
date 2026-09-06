@@ -7,6 +7,7 @@ import { MigrationQueue } from '@/widgets/queue/MigrationQueue';
 import { SwarmSwimlanes } from '@/widgets/swarm-view/SwarmSwimlanes';
 import { Cpu, HardDrive, LayoutDashboard, Radio, Bug } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { NextStepsViewer } from './NextStepsViewer';
 
 const API_BASE = '';
 
@@ -59,7 +60,7 @@ export const DashboardPage = () => {
     
     showConfirm(
       'Apply Migration?',
-      <p>Are you sure you want to integrate these changes? This will create a new Git branch and commit the migrated files to your repository.</p>,
+      <p>This will copy the migrated files from the shadow workspace into your project directory. Your original project has NOT been modified until this point. After applying, you will need to run <code className="font-mono bg-gray-200 px-1">npm install</code> to install the new dependencies.</p>,
       async () => {
         setIsApplying(true);
         try {
@@ -74,21 +75,14 @@ export const DashboardPage = () => {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
           
-          const branchMatch = data.message.match(/branch: (.*)/);
-          const branch = branchMatch ? branchMatch[1] : 'metamorph/run_...';
-
           showAlert(
             'Integration Successful',
-            <div className="space-y-4">
-              <p>{data.message}</p>
-              <p className="font-bold">Next steps:</p>
-              <pre className="bg-neo-border p-4 font-mono text-sm text-neo-bg overflow-x-auto whitespace-pre rounded-sm">
-{`cd ${latestPlan.targetPath}
-git fetch
-git checkout ${branch}
-npm install`}
-              </pre>
-            </div>
+            <NextStepsViewer 
+              message={data.message}
+              gitUsed={data.gitUsed}
+              branch={data.branch}
+              targetPath={latestPlan.targetPath}
+            />
           );
         } catch (err: any) {
           showAlert('Apply Failed', <p className="text-red-500 font-bold">{err.message}</p>);

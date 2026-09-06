@@ -8,7 +8,7 @@ export function GlobalAlert() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-neo-bg border-4 border-neo-border w-full max-w-2xl shadow-[8px_8px_0px_0px_var(--neo-text)] flex flex-col animate-in zoom-in-95 duration-200">
+      <div className="bg-neo-bg border-4 border-neo-border w-full max-w-4xl shadow-[8px_8px_0px_0px_var(--neo-text)] flex flex-col animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="bg-neo-primary border-b-4 border-neo-border p-4 flex items-center gap-3">

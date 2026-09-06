@@ -4,6 +4,13 @@ import { execSync } from 'child_process';
 import * as os from 'os';
 import { ShadowWorkspace } from './ShadowWorkspace';
 
+export interface ApplyMigrationResult {
+  message: string;
+  gitUsed: boolean;
+  branch?: string;
+  backupPath?: string;
+}
+
 export class MigrationIntegrator {
   private shadowWorkspace: ShadowWorkspace;
 
@@ -18,7 +25,7 @@ export class MigrationIntegrator {
    * @param runId The ID of the migration run to apply.
    * @param targetPath The original target path of the project.
    */
-  public async applyMigration(runId: string, targetPath: string): Promise<string> {
+  public async applyMigration(runId: string, targetPath: string): Promise<ApplyMigrationResult> {
     const shadowDir = this.shadowWorkspace.getShadowPath(runId);
     
     if (!fs.existsSync(shadowDir)) {
@@ -38,7 +45,7 @@ export class MigrationIntegrator {
     return fs.existsSync(path.join(targetPath, '.git'));
   }
 
-  private async applyWithGit(runId: string, shadowDir: string, targetPath: string): Promise<string> {
+  private async applyWithGit(runId: string, shadowDir: string, targetPath: string): Promise<ApplyMigrationResult> {
     const branchName = `metamorph/${runId}`;
     
     // 1. Create a new branch (or reset if it already exists)
@@ -66,10 +73,14 @@ export class MigrationIntegrator {
       throw new Error(`Failed to commit changes to branch ${branchName}: ${String(e)}`);
     }
 
-    return `Successfully applied migration via Git to branch: ${branchName}`;
+    return {
+      message: `Successfully applied migration via Git to branch: ${branchName}`,
+      gitUsed: true,
+      branch: branchName
+    };
   }
 
-  private async applyWithZipFallback(runId: string, shadowDir: string, targetPath: string): Promise<string> {
+  private async applyWithZipFallback(runId: string, shadowDir: string, targetPath: string): Promise<ApplyMigrationResult> {
     // For now, since adm-zip/archiver is not installed, we will just copy to a backup folder.
     const backupDir = path.resolve(os.tmpdir(), 'metamorph_backups', `${runId}_backup`);
     
@@ -83,7 +94,11 @@ export class MigrationIntegrator {
     // Overwrite target
     this.copyShadowToTarget(shadowDir, targetPath);
 
-    return `Successfully applied migration. Git was not detected, so a backup was saved at: ${backupDir}`;
+    return {
+      message: `Successfully applied migration. Git was not detected, so a backup was saved at: ${backupDir}`,
+      gitUsed: false,
+      backupPath: backupDir
+    };
   }
 
   private copyShadowToTarget(shadowDir: string, targetPath: string) {

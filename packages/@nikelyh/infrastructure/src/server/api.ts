@@ -159,8 +159,8 @@ export async function createApiServer(
           return;
         }
         const integrator = new MigrationIntegrator(migrationRunner.workspace);
-        const message = await integrator.applyMigration(runId, targetPath);
-        res.json({ ok: true, message });
+        const result = await integrator.applyMigration(runId, targetPath);
+        res.json({ ok: true, ...result });
       } catch (error: unknown) {
         if (error instanceof Error) {
           res.status(500).json({ error: error.message });

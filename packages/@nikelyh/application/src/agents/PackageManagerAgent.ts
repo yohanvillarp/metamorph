@@ -64,61 +64,59 @@ const managePackagesProcessor = {
       }
     }
 
-    // 2. Manage dependencies safely using npm commands
+    // 2. Manage dependencies by directly editing package.json (NO npm subprocess)
+    // Running npm install/uninstall inside the shadow dir would cause npm to walk
+    // upward and modify the REAL project's node_modules and package.json.
     const packageJsonPath = path.join(shadowDir, 'package.json');
     if (fs.existsSync(packageJsonPath)) {
-      const { spawn } = await import('node:child_process');
-      
-      const runCommandAsync = (cmd: string, args: string[]): Promise<void> => {
-        return new Promise((resolve, reject) => {
-          const proc = spawn(cmd, args, { cwd: shadowDir, stdio: 'ignore', shell: true });
-          proc.on('close', (code) => {
-            if (code === 0) resolve();
-            else reject(new Error(`Command ${cmd} ${args.join(' ')} failed with code ${code}`));
-          });
-          proc.on('error', reject);
-        });
-      };
-
       try {
+        const pkgRaw = fs.readFileSync(packageJsonPath, 'utf-8');
+        const pkg = JSON.parse(pkgRaw);
+
+        // Ensure sections exist
+        if (!pkg.dependencies) pkg.dependencies = {};
+        if (!pkg.devDependencies) pkg.devDependencies = {};
+
         // Remove old dependencies
-        let toRemove = [];
-        if (catalogEntry.dependenciesToRemove) toRemove.push(...catalogEntry.dependenciesToRemove);
-        if (catalogEntry.devDependenciesToRemove) toRemove.push(...catalogEntry.devDependenciesToRemove);
-        
-        if (toRemove.length > 0) {
-          console.log(`[PackageManagerAgent] Uninstalling: ${toRemove.join(' ')}`);
-          await runCommandAsync('npm', ['uninstall', ...toRemove]);
+        if (catalogEntry.dependenciesToRemove) {
+          for (const dep of catalogEntry.dependenciesToRemove) {
+            delete pkg.dependencies[dep];
+            delete pkg.devDependencies[dep];
+          }
+        }
+        if (catalogEntry.devDependenciesToRemove) {
+          for (const dep of catalogEntry.devDependenciesToRemove) {
+            delete pkg.dependencies[dep];
+            delete pkg.devDependencies[dep];
+          }
         }
 
         // Add new dependencies
-        if (catalogEntry.dependenciesToAdd && Object.keys(catalogEntry.dependenciesToAdd).length > 0) {
-          const deps = Object.entries(catalogEntry.dependenciesToAdd).map(([pkg, ver]) => `${pkg}@${ver}`);
-          console.log(`[PackageManagerAgent] Installing dependencies (this may take a few minutes)...`);
-          sendEvent({
-            type: SemanticEventName.SYSTEM_LOG as any,
-            producerId: participant.getId(),
-            occurredAt: new Date(),
-            payload: { planId: payload.planId, message: 'Downloading and installing dependencies (this may take a few minutes)...', level: 'info' }
-          }, participant.getId());
-          await runCommandAsync('npm', ['install', ...deps]);
+        if (catalogEntry.dependenciesToAdd) {
+          for (const [dep, ver] of Object.entries(catalogEntry.dependenciesToAdd)) {
+            pkg.dependencies[dep] = ver;
+          }
+        }
+        if (catalogEntry.devDependenciesToAdd) {
+          for (const [dep, ver] of Object.entries(catalogEntry.devDependenciesToAdd)) {
+            pkg.devDependencies[dep] = ver;
+          }
         }
 
-        if (catalogEntry.devDependenciesToAdd && Object.keys(catalogEntry.devDependenciesToAdd).length > 0) {
-          const devDeps = Object.entries(catalogEntry.devDependenciesToAdd).map(([pkg, ver]) => `${pkg}@${ver}`);
-          console.log(`[PackageManagerAgent] Installing devDependencies...`);
-          await runCommandAsync('npm', ['install', '-D', ...devDeps]);
-        }
+        // Clean up empty sections
+        if (Object.keys(pkg.devDependencies).length === 0) delete pkg.devDependencies;
 
-        console.log(`[PackageManagerAgent] Successfully updated dependencies via npm.`);
+        fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+        console.log(`[PackageManagerAgent] Updated package.json dependencies directly (no npm subprocess).`);
+
         sendEvent({
           type: SemanticEventName.SYSTEM_LOG as any,
           producerId: participant.getId(),
           occurredAt: new Date(),
-          payload: { planId: payload.planId, message: 'Dependencies installed successfully!', level: 'info' }
+          payload: { planId: payload.planId, message: 'Dependencies updated in package.json. Run "npm install" after applying the migration.', level: 'info' }
         }, participant.getId());
       } catch (err) {
-        console.error(`[PackageManagerAgent] Error running npm commands:`, err);
+        console.error(`[PackageManagerAgent] Error editing package.json:`, err);
       }
     } else {
       console.log(`[PackageManagerAgent] No package.json found at ${packageJsonPath}`);
