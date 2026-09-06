@@ -10,6 +10,12 @@ export const frontendCatalog: MigrationCatalogEntry[] = [
     dependenciesToAdd: { 'next': 'latest', 'react': 'latest', 'react-dom': 'latest' },
     devDependenciesToRemove: [],
     devDependenciesToAdd: {},
+    scriptsToUpdate: {
+      dev: 'next dev',
+      build: 'next build',
+      start: 'next start',
+      lint: 'next lint'
+    },
     architecturalRules: [
       'Migrate standard React routing (e.g. react-router-dom) to Next.js file-system routing in the "app" directory.',
       'Convert the main entry point (usually main.tsx or index.tsx) into Next.js app/layout.tsx and app/page.tsx.',
@@ -49,6 +55,11 @@ export default function App() {
     dependenciesToAdd: { 'react-router-dom': 'latest' },
     devDependenciesToRemove: [],
     devDependenciesToAdd: { 'vite': 'latest', '@vitejs/plugin-react': 'latest' },
+    scriptsToUpdate: {
+      dev: 'vite',
+      build: 'tsc -b && vite build',
+      preview: 'vite preview'
+    },
     architecturalRules: [
       'Replace Next.js file-system routing (app/ or pages/) with declarative React Router (react-router-dom) components.',
       'Remove all "use client" and "use server" directives, as they are Next.js specific.',

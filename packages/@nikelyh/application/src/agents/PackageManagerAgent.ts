@@ -106,6 +106,14 @@ const managePackagesProcessor = {
         // Clean up empty sections
         if (Object.keys(pkg.devDependencies).length === 0) delete pkg.devDependencies;
 
+        // Update scripts
+        if (catalogEntry.scriptsToUpdate) {
+          if (!pkg.scripts) pkg.scripts = {};
+          for (const [scriptName, scriptCmd] of Object.entries(catalogEntry.scriptsToUpdate)) {
+            pkg.scripts[scriptName] = scriptCmd;
+          }
+        }
+
         fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
         console.log(`[PackageManagerAgent] Updated package.json dependencies directly (no npm subprocess).`);
 

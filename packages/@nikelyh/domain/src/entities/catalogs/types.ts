@@ -9,4 +9,5 @@ export interface MigrationCatalogEntry {
   dependenciesToAdd?: Record<string, string>;
   devDependenciesToRemove?: string[];
   devDependenciesToAdd?: Record<string, string>;
+  scriptsToUpdate?: Record<string, string>;
 }
