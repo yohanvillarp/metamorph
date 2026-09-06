@@ -81,9 +81,9 @@ export const FolderPicker = ({ value, onChange }: FolderPickerProps) => {
 
             {/* Current Path */}
             {browsing && (
-              <div className="flex items-center gap-2 mb-3 p-2 bg-neo-text/5 border-2 border-neo-border font-mono text-xs truncate">
+              <div className="flex items-center gap-2 mb-3 p-2 bg-neo-text/5 border-2 border-neo-border font-mono text-xs overflow-hidden">
                 <Folder size={14} className="text-yellow-500 shrink-0" />
-                {browsing.current}
+                <span className="truncate flex-1" title={browsing.current}>{browsing.current}</span>
               </div>
             )}
 
