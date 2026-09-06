@@ -60,7 +60,7 @@ const managePackagesProcessor = {
     // 2. Manage dependencies safely using npm commands
     const packageJsonPath = path.join(shadowDir, 'package.json');
     if (fs.existsSync(packageJsonPath)) {
-      const { execSync } = require('child_process');
+      const { execSync } = await import('node:child_process');
       const execOpts = { cwd: shadowDir, stdio: 'inherit' as const };
 
       try {
