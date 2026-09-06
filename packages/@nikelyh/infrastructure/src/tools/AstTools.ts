@@ -1,11 +1,30 @@
 import { Tool } from '@mozaik-ai/core';
 import { Project } from 'ts-morph';
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
+import * as path from 'node:path';
 
 // A shared ts-morph project instance for the tools
 const project = new Project();
 
-export function createReadFileTool(): Tool {
+/**
+ * Validates that a file path is within the allowed sandbox directory.
+ * Prevents the LLM from writing to files outside the shadow workspace.
+ */
+function assertSandbox(filePath: string, sandboxDir?: string): string {
+  const resolved = path.resolve(filePath);
+  if (sandboxDir) {
+    const resolvedSandbox = path.resolve(sandboxDir);
+    if (!resolved.startsWith(resolvedSandbox)) {
+      throw new Error(
+        `BLOCKED: Path "${resolved}" is outside the sandbox "${resolvedSandbox}". ` +
+        `All file operations must stay within the shadow workspace.`
+      );
+    }
+  }
+  return resolved;
+}
+
+export function createReadFileTool(sandboxDir?: string): Tool {
   return {
     type: 'function',
     name: 'read_file',
@@ -13,35 +32,36 @@ export function createReadFileTool(): Tool {
     parameters: {
       type: 'object',
       properties: {
-        filePath: { type: 'string', description: 'The relative path to the file to read.' },
+        filePath: { type: 'string', description: 'The absolute path to the file to read.' },
       },
       required: ['filePath'],
       additionalProperties: false,
     },
     strict: true,
     invoke: async ({ filePath }: { filePath: string }) => {
-      if (!existsSync(filePath)) {
-        return { error: `File not found: ${filePath}` };
+      const resolvedPath = assertSandbox(filePath, sandboxDir);
+
+      if (!existsSync(resolvedPath)) {
+        return { error: `File not found: ${resolvedPath}` };
       }
       
-      let sourceFile = project.getSourceFile(filePath);
+      let sourceFile = project.getSourceFile(resolvedPath);
       if (!sourceFile) {
-        project.addSourceFileAtPath(filePath);
-        sourceFile = project.getSourceFileOrThrow(filePath);
+        project.addSourceFileAtPath(resolvedPath);
+        sourceFile = project.getSourceFileOrThrow(resolvedPath);
       } else {
-        // Refresh from disk in case it changed
         await sourceFile.refreshFromFileSystem();
       }
       
       return {
-        filePath,
+        filePath: resolvedPath,
         content: sourceFile.getFullText(),
       };
     },
   };
 }
 
-export function createWriteFileTool(): Tool {
+export function createWriteFileTool(sandboxDir?: string): Tool {
   return {
     type: 'function',
     name: 'write_file',
@@ -49,7 +69,7 @@ export function createWriteFileTool(): Tool {
     parameters: {
       type: 'object',
       properties: {
-        filePath: { type: 'string', description: 'The relative path to the file to modify.' },
+        filePath: { type: 'string', description: 'The absolute path to the file to modify.' },
         newContent: { type: 'string', description: 'The entire new source code to write to the file.' },
       },
       required: ['filePath', 'newContent'],
@@ -57,13 +77,15 @@ export function createWriteFileTool(): Tool {
     },
     strict: true,
     invoke: async ({ filePath, newContent }: { filePath: string; newContent: string }) => {
-      let sourceFile = project.getSourceFile(filePath);
+      const resolvedPath = assertSandbox(filePath, sandboxDir);
+
+      let sourceFile = project.getSourceFile(resolvedPath);
       if (!sourceFile) {
-        if (existsSync(filePath)) {
-          project.addSourceFileAtPath(filePath);
-          sourceFile = project.getSourceFileOrThrow(filePath);
+        if (existsSync(resolvedPath)) {
+          project.addSourceFileAtPath(resolvedPath);
+          sourceFile = project.getSourceFileOrThrow(resolvedPath);
         } else {
-          sourceFile = project.createSourceFile(filePath, '');
+          sourceFile = project.createSourceFile(resolvedPath, '');
         }
       }
       
@@ -72,13 +94,13 @@ export function createWriteFileTool(): Tool {
       
       return {
         success: true,
-        message: `File ${filePath} successfully updated.`,
+        message: `File ${resolvedPath} successfully updated.`,
       };
     },
   };
 }
 
-export function createRenameFileTool(): Tool {
+export function createRenameFileTool(sandboxDir?: string): Tool {
   return {
     type: 'function',
     name: 'rename_file',
@@ -86,36 +108,42 @@ export function createRenameFileTool(): Tool {
     parameters: {
       type: 'object',
       properties: {
-        oldPath: { type: 'string', description: 'Current relative path of the file.' },
-        newPath: { type: 'string', description: 'New relative path for the file.' },
+        oldPath: { type: 'string', description: 'Current absolute path of the file.' },
+        newPath: { type: 'string', description: 'New absolute path for the file.' },
       },
       required: ['oldPath', 'newPath'],
       additionalProperties: false,
     },
     strict: true,
     invoke: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
-      const { renameSync, existsSync } = await import('node:fs');
-      if (!existsSync(oldPath)) {
-        return { error: `File not found: ${oldPath}` };
+      const resolvedOld = assertSandbox(oldPath, sandboxDir);
+      const resolvedNew = assertSandbox(newPath, sandboxDir);
+
+      const { renameSync, existsSync: fsExists } = await import('node:fs');
+      if (!fsExists(resolvedOld)) {
+        return { error: `File not found: ${resolvedOld}` };
       }
       
-      renameSync(oldPath, newPath);
+      const { mkdirSync } = await import('node:fs');
+      const { dirname } = await import('node:path');
+      mkdirSync(dirname(resolvedNew), { recursive: true });
+
+      renameSync(resolvedOld, resolvedNew);
       
-      // Update ts-morph project if loaded
-      const sourceFile = project.getSourceFile(oldPath);
+      const sourceFile = project.getSourceFile(resolvedOld);
       if (sourceFile) {
         project.removeSourceFile(sourceFile);
-        if (existsSync(newPath)) {
-          project.addSourceFileAtPath(newPath);
+        if (fsExists(resolvedNew)) {
+          project.addSourceFileAtPath(resolvedNew);
         }
       }
       
-      return { success: true, message: `File renamed from ${oldPath} to ${newPath}.` };
+      return { success: true, message: `File renamed from ${resolvedOld} to ${resolvedNew}.` };
     },
   };
 }
 
-export function createCreateFileTool(): Tool {
+export function createCreateFileTool(sandboxDir?: string): Tool {
   return {
     type: 'function',
     name: 'create_file',
@@ -123,7 +151,7 @@ export function createCreateFileTool(): Tool {
     parameters: {
       type: 'object',
       properties: {
-        filePath: { type: 'string', description: 'Relative path of the new file to create.' },
+        filePath: { type: 'string', description: 'Absolute path of the new file to create.' },
         content: { type: 'string', description: 'The content of the new file.' },
       },
       required: ['filePath', 'content'],
@@ -131,20 +159,22 @@ export function createCreateFileTool(): Tool {
     },
     strict: true,
     invoke: async ({ filePath, content }: { filePath: string; content: string }) => {
+      const resolvedPath = assertSandbox(filePath, sandboxDir);
+
       const { writeFileSync, mkdirSync } = await import('node:fs');
       const { dirname } = await import('node:path');
       
-      mkdirSync(dirname(filePath), { recursive: true });
-      writeFileSync(filePath, content, 'utf-8');
+      mkdirSync(dirname(resolvedPath), { recursive: true });
+      writeFileSync(resolvedPath, content, 'utf-8');
       
-      project.addSourceFileAtPath(filePath);
+      project.addSourceFileAtPath(resolvedPath);
       
-      return { success: true, message: `File created at ${filePath}.` };
+      return { success: true, message: `File created at ${resolvedPath}.` };
     },
   };
 }
 
-export function createDeleteFileTool(): Tool {
+export function createDeleteFileTool(sandboxDir?: string): Tool {
   return {
     type: 'function',
     name: 'delete_file',
@@ -152,22 +182,24 @@ export function createDeleteFileTool(): Tool {
     parameters: {
       type: 'object',
       properties: {
-        filePath: { type: 'string', description: 'Relative path of the file to delete.' },
+        filePath: { type: 'string', description: 'Absolute path of the file to delete.' },
       },
       required: ['filePath'],
       additionalProperties: false,
     },
     strict: true,
     invoke: async ({ filePath }: { filePath: string }) => {
-      const { renameSync, existsSync } = await import('node:fs');
-      if (!existsSync(filePath)) {
-        return { error: `File not found: ${filePath}` };
+      const resolvedPath = assertSandbox(filePath, sandboxDir);
+
+      const { renameSync, existsSync: fsExists } = await import('node:fs');
+      if (!fsExists(resolvedPath)) {
+        return { error: `File not found: ${resolvedPath}` };
       }
       
-      const obsoletePath = `${filePath}.obsolete`;
-      renameSync(filePath, obsoletePath);
+      const obsoletePath = `${resolvedPath}.obsolete`;
+      renameSync(resolvedPath, obsoletePath);
       
-      const sourceFile = project.getSourceFile(filePath);
+      const sourceFile = project.getSourceFile(resolvedPath);
       if (sourceFile) {
         project.removeSourceFile(sourceFile);
       }

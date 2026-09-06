@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import 'dotenv/config';
+import * as path from 'node:path';
 
 import {
   SQLiteStateStore,
@@ -98,12 +99,13 @@ program
     const spinner = ora('Initializing...').start();
     try {
       const store = new SQLiteStateStore('.metamorph');
+      const shadowBase = path.resolve('.metamorph/shadow');
       const tools = [
-        createReadFileTool(),
-        createWriteFileTool(),
-        createRenameFileTool(),
-        createCreateFileTool(),
-        createDeleteFileTool()
+        createReadFileTool(shadowBase),
+        createWriteFileTool(shadowBase),
+        createRenameFileTool(shadowBase),
+        createCreateFileTool(shadowBase),
+        createDeleteFileTool(shadowBase)
       ];
       const runner = new MigrationRunner(store, tools);
 
@@ -248,12 +250,13 @@ program
       }
       
       const store = new SQLiteStateStore('.metamorph');
+      const shadowBase = path.resolve('.metamorph/shadow');
       const tools = [
-        createReadFileTool(),
-        createWriteFileTool(),
-        createRenameFileTool(),
-        createCreateFileTool(),
-        createDeleteFileTool()
+        createReadFileTool(shadowBase),
+        createWriteFileTool(shadowBase),
+        createRenameFileTool(shadowBase),
+        createCreateFileTool(shadowBase),
+        createDeleteFileTool(shadowBase)
       ];
       const runner = new MigrationRunner(store, tools);
 
