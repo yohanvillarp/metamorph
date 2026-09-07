@@ -208,3 +208,39 @@ export function createDeleteFileTool(sandboxDir?: string): Tool {
     },
   };
 }
+
+export function createListDirectoryTool(sandboxDir?: string): Tool {
+  return {
+    type: 'function',
+    name: 'list_directory',
+    description: 'Lists files and folders in a directory inside the shadow workspace. Use this to find existing screens, entry files, or imports instead of guessing paths.',
+    parameters: {
+      type: 'object',
+      properties: {
+        dirPath: { type: 'string', description: 'Absolute directory path inside the shadow workspace.' },
+      },
+      required: ['dirPath'],
+      additionalProperties: false,
+    },
+    strict: true,
+    invoke: async ({ dirPath }: { dirPath: string }) => {
+      const resolvedPath = assertSandbox(dirPath, sandboxDir);
+      const { readdirSync, statSync, existsSync: fsExists } = await import('node:fs');
+      if (!fsExists(resolvedPath)) {
+        return { error: `Directory not found: ${resolvedPath}` };
+      }
+      if (!statSync(resolvedPath).isDirectory()) {
+        return { error: `Not a directory: ${resolvedPath}` };
+      }
+      const entries = readdirSync(resolvedPath, { withFileTypes: true })
+        .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'node_modules')
+        .slice(0, 80)
+        .map((entry) => ({
+          name: entry.name,
+          path: path.join(resolvedPath, entry.name),
+          kind: entry.isDirectory() ? 'dir' : 'file',
+        }));
+      return { dirPath: resolvedPath, entries };
+    },
+  };
+}

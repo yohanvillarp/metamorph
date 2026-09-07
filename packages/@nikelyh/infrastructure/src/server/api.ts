@@ -160,6 +160,14 @@ export async function createApiServer(
         }
         const integrator = new MigrationIntegrator(migrationRunner.workspace);
         const result = await integrator.applyMigration(runId, targetPath);
+        const plans = await store.getAllPlans();
+        const plan = plans.find((item) => item.runId === runId);
+        if (plan) {
+          plan.appliedAt = new Date();
+          plan.appliedBranch = result.branch;
+          await store.savePlan(plan);
+        }
+        await store.logEvent('migration.applied', { runId, branch: result.branch, targetPath });
         res.json({ ok: true, ...result });
       } catch (error: unknown) {
         if (error instanceof Error) {
