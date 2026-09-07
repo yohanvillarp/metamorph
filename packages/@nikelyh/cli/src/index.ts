@@ -12,11 +12,13 @@ import {
   createRenameFileTool,
   createCreateFileTool,
   createDeleteFileTool,
+  createListDirectoryTool,
   createApiServer,
   MigrationIntegrator,
   ShadowWorkspace,
   detectTechnologies,
-  createCheckProjectDiagnosticsTool
+  createCheckProjectDiagnosticsTool,
+  createRunBuildTool
 } from '@nikelyh/infrastructure';
 import { MigrationRunner } from '@nikelyh/application';
 
@@ -46,9 +48,11 @@ program
       express: ['fastify', 'nestjs'],
       fastify: ['express', 'nestjs'],
       nestjs: ['express', 'fastify'],
-      react: ['next', 'vue'],
-      next: ['react'],
-      vue: ['react'],
+      react: ['next', 'vue', 'angular', 'svelte'],
+      next: ['react', 'vue', 'angular', 'svelte'],
+      vue: ['react', 'next', 'angular', 'svelte'],
+      angular: ['react', 'next', 'vue', 'svelte'],
+      svelte: ['react', 'next', 'vue', 'angular'],
     };
 
     if (!from) {
@@ -107,7 +111,9 @@ program
         createRenameFileTool(shadowBase),
         createCreateFileTool(shadowBase),
         createDeleteFileTool(shadowBase),
-        createCheckProjectDiagnosticsTool(shadowBase)
+        createListDirectoryTool(shadowBase),
+        createCheckProjectDiagnosticsTool(shadowBase),
+        createRunBuildTool(shadowBase)
       ];
       const runner = new MigrationRunner(store, tools);
 
@@ -135,12 +141,12 @@ program
 
 program
   .command('apply <runId> <targetPath>')
-  .description('Apply a completed migration to the target project')
+  .description('Apply a completed migration to the target project (requires Git at the project or monorepo root)')
   .action(async (runId: string, targetPath: string) => {
     try {
       const integrator = new MigrationIntegrator(new ShadowWorkspace());
-      const message = await integrator.applyMigration(runId, targetPath);
-      console.log(chalk.green(`✅ ${message}`));
+      const result = await integrator.applyMigration(runId, targetPath);
+      console.log(chalk.green(`✅ ${result.message}`));
     } catch (error: unknown) {
       console.error(chalk.red(`❌ Failed to apply migration: ${error instanceof Error ? error.message : String(error)}`));
       process.exit(1);
@@ -259,7 +265,9 @@ program
         createRenameFileTool(shadowBase),
         createCreateFileTool(shadowBase),
         createDeleteFileTool(shadowBase),
-        createCheckProjectDiagnosticsTool(shadowBase)
+        createListDirectoryTool(shadowBase),
+        createCheckProjectDiagnosticsTool(shadowBase),
+        createRunBuildTool(shadowBase)
       ];
       const runner = new MigrationRunner(store, tools);
 
