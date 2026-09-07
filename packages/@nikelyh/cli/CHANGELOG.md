@@ -1,5 +1,11 @@
 # @nikelyh/metamorph
 
+## 2.1.0
+
+### Minor Changes
+
+- Coordinator watchdog so Integration always starts after file work settles, layered catalog rules (all → layer → runtime → framework → pair) with Vue/Angular/Svelte scaffolds and verifiers, shadow npm install/build as the real finish line, and a live swarm dashboard.
+
 ## 2.0.11
 
 ### Patch Changes
