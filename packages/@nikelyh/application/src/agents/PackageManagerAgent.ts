@@ -26,23 +26,43 @@ const managePackagesProcessor = {
   async apply({ event, participant }: SituationContext) {
     const payload = event.payload as SemanticEventPayloads.MigrationStarted;
     console.log(`[PackageManagerAgent] Managing dependencies and cleanup for Plan: ${payload.planId}`);
-    
+    const runtime = resolveRuntime();
+
+    const emitPackagesReady = async (status: 'completed' | 'failed' = 'completed') => {
+      const currentPlan = await runtime.state.repository.getPlan(payload.planId);
+      if (currentPlan) {
+        const pmTaskToComplete = currentPlan.tasks.find(t => t.filePath === 'system:package_manager');
+        if (pmTaskToComplete) {
+          pmTaskToComplete.status = status;
+          await runtime.state.repository.savePlan(currentPlan);
+        }
+      }
+      sendEvent({
+        type: SemanticEventName.PHASE_PACKAGES_READY,
+        producerId: participant.getId(),
+        occurredAt: new Date(),
+        payload: { planId: payload.planId },
+      }, participant.getId());
+    };
+
     const shadowDir = payload.shadowWorkspacePath || '';
     if (!shadowDir || !fs.existsSync(shadowDir)) {
       console.warn('[PackageManagerAgent] No valid shadow workspace provided. Skipping.');
+      await emitPackagesReady('failed');
       return;
     }
 
-    const runtime = resolveRuntime();
     const plan = await runtime.state.repository.getPlan(payload.planId);
     if (!plan) {
       console.warn('[PackageManagerAgent] Migration plan not found.');
+      await emitPackagesReady('failed');
       return;
     }
 
     const catalogEntry = findMigrationCatalogEntry(plan.profile.source, plan.profile.target);
     if (!catalogEntry) {
       console.log(`[PackageManagerAgent] No catalog entry found for ${plan.profile.source} -> ${plan.profile.target}`);
+      await emitPackagesReady('failed');
       return;
     }
 
@@ -60,6 +80,18 @@ const managePackagesProcessor = {
         if (fs.existsSync(fullPath)) {
           fs.unlinkSync(fullPath);
           console.log(`[PackageManagerAgent] Deleted deprecated file: ${fileToDelete}`);
+        }
+      }
+    }
+
+    // 1.5 Scaffold missing structural files
+    if (catalogEntry.filesToScaffold) {
+      for (const [filename, content] of Object.entries(catalogEntry.filesToScaffold)) {
+        const fullPath = path.join(shadowDir, filename);
+        if (!fs.existsSync(fullPath)) {
+          fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+          fs.writeFileSync(fullPath, content, 'utf-8');
+          console.log(`[PackageManagerAgent] Scaffolded missing structural file: ${filename}`);
         }
       }
     }
@@ -113,6 +145,11 @@ const managePackagesProcessor = {
             pkg.scripts[scriptName] = scriptCmd;
           }
         }
+        if (catalogEntry.scriptsToRemove && pkg.scripts) {
+          for (const scriptName of catalogEntry.scriptsToRemove) {
+            delete pkg.scripts[scriptName];
+          }
+        }
 
         fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
         console.log(`[PackageManagerAgent] Updated package.json dependencies directly (no npm subprocess).`);
@@ -121,7 +158,7 @@ const managePackagesProcessor = {
           type: SemanticEventName.SYSTEM_LOG as any,
           producerId: participant.getId(),
           occurredAt: new Date(),
-          payload: { planId: payload.planId, message: 'Dependencies updated in package.json. Run "npm install" after applying the migration.', level: 'info' }
+          payload: { planId: payload.planId, message: 'PackageManager updated package.json. IntegrationAgent will run npm install in the shadow workspace — the original project is untouched until you Apply.', level: 'info' }
         }, participant.getId());
       } catch (err) {
         console.error(`[PackageManagerAgent] Error editing package.json:`, err);
@@ -130,34 +167,7 @@ const managePackagesProcessor = {
       console.log(`[PackageManagerAgent] No package.json found at ${packageJsonPath}`);
     }
 
-    // Mark system task as completed
-    const currentPlan = await runtime.state.repository.getPlan(payload.planId);
-    if (currentPlan) {
-      const pmTaskToComplete = currentPlan.tasks.find(t => t.filePath === 'system:package_manager');
-      if (pmTaskToComplete) {
-        pmTaskToComplete.status = 'completed';
-        await runtime.state.repository.savePlan(currentPlan);
-      }
-
-      // Check if ALL tasks are complete
-      const allTerminal = currentPlan.tasks.every(t => t.status === 'completed' || t.status === 'failed');
-      if (allTerminal) {
-        console.log(`[App] All tasks reached terminal state. Emitting MIGRATION_COMPLETED.`);
-        sendEvent({
-          type: SemanticEventName.SYSTEM_LOG as any,
-          producerId: participant.getId(),
-          occurredAt: new Date(),
-          payload: { planId: payload.planId, message: 'All file tasks finished. Entering Integration Phase to resolve broken cross-file dependencies...', level: 'info' }
-        }, participant.getId());
-
-        sendEvent({
-          type: SemanticEventName.PHASE_INTEGRATION_STARTED,
-          producerId: participant.getId(),
-          occurredAt: new Date(),
-          payload: { planId: payload.planId },
-        }, participant.getId());
-      }
-    }
+    await emitPackagesReady('completed');
   },
 };
 

@@ -45,7 +45,10 @@ const mapFilesProcessor = {
         const fullPath = path.join(dir, file);
         if (fs.statSync(fullPath).isDirectory()) {
           scanDir(fullPath);
-        } else if (file.endsWith('.ts') || file.endsWith('.js') || file.endsWith('.tsx') || file.endsWith('.jsx')) {
+        } else if (
+          /\.(ts|js|tsx|jsx|vue|svelte)$/.test(file)
+          || (file.endsWith('.html') && file !== 'index.html')
+        ) {
           filesToMigrate.push(fullPath);
         }
       }

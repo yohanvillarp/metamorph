@@ -6,8 +6,18 @@ import {
   SituationSpecification,
   Tool,
 } from '@mozaik-ai/core';
-import { SemanticEventName, SemanticEventPayloads, findMigrationCatalogEntry } from '@nikelyh/domain';
-import { join, leave, runLoop, resolveRuntime } from '../runtime';
+import { findMigrationCatalogEntry, formatCatalogRules, SemanticEventName, SemanticEventPayloads } from '@nikelyh/domain';
+import { collectFileHints } from '../migration/registry';
+import { join, leave, resolveRuntime, runLoop, sendEvent } from '../runtime';
+import * as path from 'path';
+import { buildNeighborContext } from '../utils/NeighborContext';
+import {
+  analyzeReactToNextStructure,
+  findShadowRoot,
+  hasNextAppRoutes,
+  isFsdPageComponent,
+  isSpaRootComponent,
+} from '../utils/NextMigrationHints';
 
 class ConcurrencyQueue {
   private queue: Array<() => Promise<void>> = [];
@@ -39,7 +49,7 @@ class ConcurrencyQueue {
   }
 }
 
-const reviewerQueue = new ConcurrencyQueue(2); // Maximum 2 concurrent reviewers
+const reviewerQueue = new ConcurrencyQueue(3); // Maximum 3 concurrent reviewers
 
 class WhenFileMigrated extends SituationSpecification {
   isSatisfiedBy({ event }: SituationContext): boolean {
@@ -85,7 +95,7 @@ const reviewFileProcessor = {
     const tempAgent = createMozaikAgent({
       name: reviewerId,
       capabilities: ['code_review', 'inference'],
-      instruction: 'You are the Quality Assurance Reviewer. You must review the migrated code. Note that you are reviewing a SINGLE FILE within a larger migration. Evaluate if the file violates architectural rules, but DO NOT reject it simply because it does not demonstrate all architectural features (e.g. do not reject a test file or a bootstrap file just because it lacks a Controller). If the worker completely violated the architectural paradigm in a way that cannot be fixed by a simple code edit, use status FATAL_MISMATCH to abort.',
+      instruction: 'You are a staff engineer reviewing a migrated file against its neighbors. Reject if public props/emits do not match imported modules, if a router file re-implements a screen instead of importing it, or if a screen was hollowed out. UI that lived under src/pages in a SPA is not a Next Pages Router file. Do not reject a file just because it lacks every catalog feature. FATAL_MISMATCH only for an unfixable paradigm break.',
       tools: [], // No tools to avoid Gemini thought_signature crash
       handlers: [
         // DEBUG: Catch-all handler to log every event this agent receives
@@ -125,6 +135,8 @@ const reviewFileProcessor = {
                 try {
                   if (reviewResult.status === 'APPROVED') {
                     console.log(`[ReviewerAgent:${reviewerId}] File ${payload.filePath} APPROVED!`);
+                    const runtime = await resolveRuntime();
+                    await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'completed');
                     sendEvent({
                       type: SemanticEventName.FILE_REVIEWED,
                       producerId: participantId,
@@ -151,26 +163,6 @@ const reviewFileProcessor = {
                 } catch (e) {
                   console.error(`[ReviewerAgent:${reviewerId}] Failed to send review event:`, e);
                 }
-
-                // Check if all tasks are complete
-                try {
-                  const runtime = await resolveRuntime();
-                  const plan = await runtime.state.repository.getPlan(payload.planId);
-                  if (plan) {
-                    const allTerminal = plan.tasks.every(t => t.status === 'completed' || t.status === 'failed');
-                    if (allTerminal) {
-                      console.log(`[App] All tasks reached terminal state. Emitting MIGRATION_COMPLETED.`);
-                      sendEvent({
-                        type: SemanticEventName.MIGRATION_COMPLETED,
-                        producerId: participantId,
-                        occurredAt: new Date(),
-                        payload: { planId: payload.planId },
-                      }, participantId);
-                    }
-                  }
-                } catch (e) {
-                  console.error(`[ReviewerAgent:${reviewerId}] Failed to check migration completion:`, e);
-                }
               }
 
               leave(tempParticipant);
@@ -190,14 +182,49 @@ const reviewFileProcessor = {
     // --- Pre-Review Missing File Check ---
     const { existsSync } = await import('node:fs');
     if (!existsSync(payload.filePath)) {
-      console.log(`[ReviewerAgent:${reviewerId}] File ${payload.filePath} does not exist on disk (likely intentionally deleted/moved). Auto-approving.`);
       const { sendEvent } = await import('../runtime');
+      const planForMissing = await runtime.state.repository.getPlan(payload.planId);
+      const target = planForMissing?.profile.target;
+      const shadowRoot = findShadowRoot(payload.filePath);
+      const deletedFsdPage = target === 'next' && isFsdPageComponent(payload.filePath);
+      const viewsReplacement = payload.filePath.replace(/([/\\])src\1pages\1/, '$1src$1views$1');
+      const fsdMovedToViews = deletedFsdPage && existsSync(viewsReplacement);
+      const deletedRootWithoutRoutes = target === 'next'
+        && isSpaRootComponent(payload.filePath)
+        && (!shadowRoot || !hasNextAppRoutes(shadowRoot));
+
+      if ((deletedFsdPage && !fsdMovedToViews) || deletedRootWithoutRoutes) {
+        console.log(`[ReviewerAgent:${reviewerId}] Missing ${payload.filePath} is not a valid Next.js move. Rejecting.`);
+        sendEvent({
+          type: SemanticEventName.FILE_REJECTED,
+          producerId: tempAgent.getId(),
+          occurredAt: new Date(),
+          payload: {
+            planId: payload.planId,
+            filePath: payload.filePath,
+            errors: deletedFsdPage
+              ? [
+                  'This file lived under src/pages as SPA UI. Next.js reserves src/pages for the Pages Router — move the tree to a non-reserved folder and import those screens from src/app. Do not delete the UI without a replacement.',
+                ]
+              : [
+                  'The SPA root was deleted before src/app/**/page.tsx existed with real UI. Recreate routing as Next App Router pages that import the original screen components. Do not import App from those pages.',
+                ],
+          },
+        }, tempAgent.getId());
+        leave(tempAgent);
+        resolve();
+        return;
+      }
+
+      console.log(`[ReviewerAgent:${reviewerId}] File ${payload.filePath} does not exist on disk (likely intentionally deleted/moved). Auto-approving.`);
+      await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'completed');
       sendEvent({
         type: SemanticEventName.FILE_REVIEWED,
         producerId: tempAgent.getId(),
         occurredAt: new Date(),
         payload: { planId: payload.planId, filePath: payload.filePath },
       }, tempAgent.getId());
+
       leave(tempAgent);
       resolve();
       return;
@@ -237,20 +264,48 @@ const reviewFileProcessor = {
     // -----------------------------------
 
     const plan = await runtime.state.repository.getPlan(payload.planId);
+    if (plan && plan.profile.source.toLowerCase() === 'react' && plan.profile.target.toLowerCase() === 'next') {
+      const shadowRoot = findShadowRoot(payload.filePath);
+      if (shadowRoot) {
+        const current = path.resolve(payload.filePath);
+        const structureIssues = analyzeReactToNextStructure(shadowRoot).filter(
+          (issue) => path.resolve(issue.filePath) === current,
+        );
+        if (structureIssues.length > 0) {
+          const errors = structureIssues.flatMap((issue) => issue.errors);
+          console.error(`[ReviewerAgent:${reviewerId}] Structure verifier rejected ${payload.filePath}.`, errors);
+          sendEvent({
+            type: SemanticEventName.FILE_REJECTED,
+            producerId: tempAgent.getId(),
+            occurredAt: new Date(),
+            payload: { planId: payload.planId, filePath: payload.filePath, errors },
+          }, tempAgent.getId());
+          leave(tempAgent);
+          resolve();
+          return;
+        }
+      }
+    }
+
     let prompt = `Review the following file migration: ${payload.filePath}\n`;
     
     if (plan) {
       prompt += `Migration Profile: Transform from ${plan.profile.source} to ${plan.profile.target}.\n`;
       const catalogEntry = findMigrationCatalogEntry(plan.profile.source, plan.profile.target);
       if (catalogEntry) {
-        prompt += `\nStrict Architectural Rules for this Migration (apply only if relevant to this file's purpose):\n`;
-        catalogEntry.architecturalRules.forEach(rule => prompt += `- ${rule}\n`);
+        prompt += `\nArchitectural rules (all → ${catalogEntry.layer} → frameworks → this pair; apply only if relevant to this file):\n`;
+        prompt += `${formatCatalogRules(catalogEntry.ruleSections)}\n`;
       }
+      prompt += collectFileHints(
+        payload.filePath,
+        { source: plan.profile.source, target: plan.profile.target },
+        catalogEntry?.layer,
+      );
     }
     
-    prompt += `\nDiff or new content:\n${payload.diff}\nDoes it meet the criteria? You MUST respond in JSON.`;
+    prompt += `\n${buildNeighborContext(payload.filePath)}\nDiff or new content of the file under review:\n${payload.diff}\nCompare the diff to imported modules in the evidence. If props/exports do not match, REJECT with a specific error. You MUST respond in JSON.`;
 
-    const modelToUse = process.env.METAMORPH_REVIEWER_MODEL || process.env.METAMORPH_MODEL || 'gpt-5.4-mini';
+    const modelToUse = process.env.METAMORPH_REVIEWER_MODEL || process.env.METAMORPH_MODEL || 'gpt-5.4';
     console.log(`[ReviewerAgent:${reviewerId}] Starting inference loop for ${payload.filePath} with model ${modelToUse}...`);
 
     try {
@@ -280,6 +335,12 @@ const reviewFileProcessor = {
           const { resolveRuntime } = await import('../runtime');
           const runtime = resolveRuntime();
           await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', 'Inference timed out after 45s');
+          sendEvent({
+            type: SemanticEventName.FILE_FAILED,
+            producerId: tempAgent.getId(),
+            occurredAt: new Date(),
+            payload: { planId: payload.planId, filePath: payload.filePath, reason: 'Inference timed out after 45s' },
+          }, tempAgent.getId());
           leave(tempAgent);
           resolve();
         }
@@ -291,6 +352,12 @@ const reviewFileProcessor = {
         const runtime = resolveRuntime();
         const errorMessage = error instanceof Error ? error.message : String(error);
         await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', errorMessage || 'Sync error');
+        sendEvent({
+          type: SemanticEventName.FILE_FAILED,
+          producerId: tempAgent.getId(),
+          occurredAt: new Date(),
+          payload: { planId: payload.planId, filePath: payload.filePath, reason: errorMessage || 'Sync error' },
+        }, tempAgent.getId());
         leave(tempAgent);
         resolve();
       }
