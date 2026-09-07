@@ -73,18 +73,27 @@ export const MigrationForm = ({ onStart, isStarting, startError }: MigrationForm
   const canLaunch = fromFw && toFw && !detectError && !isStarting;
 
   return (
-    <div className="neo-card border-dashed max-w-6xl mx-auto w-full p-6 md:p-8 relative overflow-hidden flex flex-col gap-6">
+    <div className="neo-card border-dashed max-w-4xl mx-auto w-full p-4 md:p-6 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neo-primary/10 via-transparent to-transparent opacity-50 pointer-events-none"></div>
 
-      <div className="text-center relative z-10">
-        <h2 className="text-3xl md:text-4xl font-black uppercase tracking-widest mb-1">Launch Migration</h2>
-        <p className="font-bold text-xs md:text-sm text-neo-text/60 uppercase tracking-wider">Configure your AI transformation swarm</p>
-      </div>
+      <div className="relative z-10 w-full max-w-3xl mx-auto flex flex-col items-center gap-4">
+        <header className="w-full text-center">
+          <a
+            href="https://github.com/yohanvillarp/metamorph"
+            target="_blank"
+            rel="noreferrer"
+            title="Metamorph on GitHub"
+            className="inline-flex items-center justify-center gap-3 hover:opacity-80"
+          >
+            <img src="/logo_metamorph.png" alt="" className="h-10 w-10 object-contain" />
+            <span className="text-lg md:text-xl font-black uppercase tracking-widest">Metamorph</span>
+          </a>
+          <h2 className="mt-4 text-2xl md:text-3xl font-black uppercase tracking-widest leading-none">Launch Migration</h2>
+          <p className="mt-2 font-bold text-xs md:text-sm text-neo-text/60 uppercase tracking-wider">Configure your AI transformation swarm</p>
+        </header>
 
-      <div className="w-full relative z-30 flex flex-col items-center">
-        {/* STEP 1: WORKSPACE */}
-        <div className="w-full max-w-3xl space-y-3">
-          <h3 className="font-black text-lg uppercase tracking-widest flex items-center gap-2 border-b-2 border-neo-border pb-1">
+        <div className="w-full relative z-30 space-y-3">
+          <h3 className="font-black text-lg uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 border-neo-border pb-1">
             <FolderOpen size={20} className="text-yellow-500" /> 1. Select Workspace
           </h3>
           <FolderPicker value={targetPath} onChange={setTargetPath} />
@@ -121,15 +130,13 @@ export const MigrationForm = ({ onStart, isStarting, startError }: MigrationForm
             </div>
           )}
         </div>
-      </div>
 
-      {/* STEP 2: TECHNOLOGY STACK */}
-      <div className={`w-full relative z-10 transition-all duration-500 ${targetPath && !detectError && !detecting ? 'opacity-100 translate-y-0' : 'opacity-30 pointer-events-none translate-y-4'}`}>
-        <h3 className="font-black text-lg uppercase tracking-widest mb-4 flex items-center justify-center gap-2 border-b-2 border-neo-border pb-1 max-w-3xl mx-auto">
-          <Cpu size={20} className="text-blue-500" /> 2. Technology Stack
-        </h3>
+        <div className={`w-full relative z-10 transition-all duration-500 ${targetPath && !detectError && !detecting ? 'opacity-100 translate-y-0' : 'opacity-30 pointer-events-none translate-y-4'}`}>
+          <h3 className="font-black text-lg uppercase tracking-widest mb-4 flex items-center justify-center gap-2 border-b-2 border-neo-border pb-1">
+            <Cpu size={20} className="text-blue-500" /> 2. Technology Stack
+          </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
           
           {/* Select FROM */}
           <div className="flex flex-col gap-2">
@@ -203,12 +210,11 @@ export const MigrationForm = ({ onStart, isStarting, startError }: MigrationForm
             </div>
           </div>
         </div>
-      </div>
+        </div>
 
-      {/* STEP 3: ACTION */}
-      <div className="w-full flex flex-col items-center relative z-10 pt-4">
+        <div className="w-full flex flex-col items-center relative z-10 pt-2">
         {startError && (
-          <div className="bg-red-100 border-4 border-red-500 p-4 mb-6 w-full max-w-lg text-red-900 font-bold text-sm text-center shadow-[4px_4px_0px_0px_#ef4444] animate-in slide-in-from-bottom-2">
+          <div className="bg-red-100 border-4 border-red-500 p-4 mb-6 w-full text-red-900 font-bold text-sm text-center shadow-[4px_4px_0px_0px_#ef4444] animate-in slide-in-from-bottom-2">
             <AlertTriangle size={24} className="mx-auto mb-2" />
             {startError}
           </div>
@@ -217,7 +223,7 @@ export const MigrationForm = ({ onStart, isStarting, startError }: MigrationForm
         <button
           onClick={() => onStart(targetPath, fromFw, toFw)}
           disabled={!canLaunch}
-          className={`w-full max-w-2xl border-4 border-black text-white flex items-center justify-center gap-4 text-xl md:text-2xl py-4 font-black uppercase tracking-widest transition-all duration-300 ${
+          className={`w-full border-4 border-black text-white flex items-center justify-center gap-4 text-xl md:text-2xl py-4 font-black uppercase tracking-widest transition-all duration-300 ${
             canLaunch 
               ? 'bg-neo-primary hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-none shadow-[8px_8px_0px_0px_#000]' 
               : 'bg-neo-text/50 opacity-50 cursor-not-allowed shadow-[8px_8px_0px_0px_#000]'
@@ -229,6 +235,7 @@ export const MigrationForm = ({ onStart, isStarting, startError }: MigrationForm
             <><Play size={32} /> LAUNCH METAMORPH SWARM</>
           )}
         </button>
+        </div>
       </div>
     </div>
   );
