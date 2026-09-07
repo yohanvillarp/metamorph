@@ -11,6 +11,8 @@ export enum SemanticEventName {
   FILE_REVIEWED = 'file.reviewed',
   FILE_REJECTED = 'file.rejected',
   FILE_FATAL_MISMATCH = 'file.fatal_mismatch',
+  FILE_FAILED = 'file.failed',
+  PHASE_PACKAGES_READY = 'phase.packages_ready',
   PHASE_INTEGRATION_STARTED = 'phase.integration_started',
   MIGRATION_COMPLETED = 'migration.completed',
   SYSTEM_LOG = 'system.log',
@@ -48,6 +50,11 @@ export namespace SemanticEventPayloads {
      * List of errors found (by linters, tests, or reviewers).
      */
     errors: string[];
+    /**
+     * Reviewer rejections share the Worker retry budget.
+     * Integration rejections reset that budget so build failures can be repaired.
+     */
+    source?: 'reviewer' | 'integration';
   }
 
   export interface FileFatalMismatch {
@@ -57,6 +64,12 @@ export namespace SemanticEventPayloads {
      * Explanation of why the architecture was fundamentally violated.
      */
     reason: string;
+  }
+
+  export interface FileFailed {
+    planId: string;
+    filePath: string;
+    reason?: string;
   }
 
   export interface SystemLog {

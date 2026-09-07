@@ -62,6 +62,27 @@ export interface MigrationPlan {
   tasks: FileTask[];
 
   /**
+   * How many integration (shadow build) rounds have been started.
+   * Caps the IntegrationAgent → Worker reject loop.
+   */
+  integrationRounds?: number;
+
+  /**
+   * High-level swarm phase. File tasks can all be terminal while integration is still running.
+   */
+  phase?: 'files' | 'integration' | 'completed' | 'failed';
+
+  /**
+   * Set after a successful apply. The dashboard hides Apply/Discard once this is present.
+   */
+  appliedAt?: Date;
+
+  /**
+   * Git branch created by apply, if any.
+   */
+  appliedBranch?: string;
+
+  /**
    * Creation date of the plan.
    */
   createdAt: Date;
