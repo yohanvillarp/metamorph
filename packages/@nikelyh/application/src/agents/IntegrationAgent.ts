@@ -23,6 +23,7 @@ async function completeMigration(participantId: string, planId: string, message:
   const plan = await runtime.state.repository.getPlan(planId);
   if (plan) {
     plan.phase = 'completed';
+    plan.outcome = 'success';
     await runtime.state.repository.savePlan(plan);
   }
 
@@ -37,7 +38,7 @@ async function completeMigration(participantId: string, planId: string, message:
     type: SemanticEventName.MIGRATION_COMPLETED,
     producerId: participantId,
     occurredAt: new Date(),
-    payload: { planId },
+    payload: { planId, outcome: 'success' } as SemanticEventPayloads.MigrationCompleted,
   }, participantId);
 }
 
@@ -55,6 +56,7 @@ async function failMigration(participantId: string, planId: string, message: str
   const plan = await runtime.state.repository.getPlan(planId);
   if (plan) {
     plan.phase = 'failed';
+    plan.outcome = 'failed';
     await runtime.state.repository.savePlan(plan);
   }
 
@@ -64,7 +66,7 @@ async function failMigration(participantId: string, planId: string, message: str
     type: SemanticEventName.MIGRATION_COMPLETED,
     producerId: participantId,
     occurredAt: new Date(),
-    payload: { planId },
+    payload: { planId, outcome: 'failed', reason: message } as SemanticEventPayloads.MigrationCompleted,
   }, participantId);
 }
 

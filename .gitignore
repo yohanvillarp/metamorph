@@ -38,3 +38,8 @@ pnpm-debug.log*
 Thumbs.db
 .agents/
 scratch/
+
+# Personalizado
+AGENTS.md
+GEMINI.md
+plans/

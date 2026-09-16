@@ -70,7 +70,12 @@ export interface MigrationPlan {
   /**
    * High-level swarm phase. File tasks can all be terminal while integration is still running.
    */
-  phase?: 'files' | 'integration' | 'completed' | 'failed';
+  phase?: 'mapping' | 'files' | 'integration' | 'completed' | 'failed';
+
+  /**
+   * Final outcome of the migration. Set only when phase is terminal ('completed' or 'failed').
+   */
+  outcome?: 'success' | 'failed';
 
   /**
    * Set after a successful apply. The dashboard hides Apply/Discard once this is present.
