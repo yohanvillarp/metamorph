@@ -10,11 +10,12 @@ const project = new Project();
  * Validates that a file path is within the allowed sandbox directory.
  * Prevents the LLM from writing to files outside the shadow workspace.
  */
-function assertSandbox(filePath: string, sandboxDir?: string): string {
+export function assertSandbox(filePath: string, sandboxDir?: string): string {
   const resolved = path.resolve(filePath);
   if (sandboxDir) {
     const resolvedSandbox = path.resolve(sandboxDir);
-    if (!resolved.startsWith(resolvedSandbox)) {
+    const isInside = resolved === resolvedSandbox || resolved.startsWith(resolvedSandbox + path.sep);
+    if (!isInside) {
       throw new Error(
         `BLOCKED: Path "${resolved}" is outside the sandbox "${resolvedSandbox}". ` +
         `All file operations must stay within the shadow workspace.`
@@ -243,4 +244,18 @@ export function createListDirectoryTool(sandboxDir?: string): Tool {
       return { dirPath: resolvedPath, entries };
     },
   };
+}
+
+/**
+ * Creates a standard suite of file manipulation tools bound strictly to a specific shadow workspace directory.
+ */
+export function createShadowTools(shadowDir: string): Tool[] {
+  return [
+    createReadFileTool(shadowDir),
+    createWriteFileTool(shadowDir),
+    createRenameFileTool(shadowDir),
+    createCreateFileTool(shadowDir),
+    createDeleteFileTool(shadowDir),
+    createListDirectoryTool(shadowDir),
+  ];
 }

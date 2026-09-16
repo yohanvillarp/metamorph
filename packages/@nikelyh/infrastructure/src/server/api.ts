@@ -1,4 +1,4 @@
-import { StateRepository, findMigrationCatalogEntry } from '@nikelyh/domain';
+import { StateRepository, resolveMigrationCatalog } from '@nikelyh/domain';
 import { MigrationIntegrator } from '../workspace/MigrationIntegrator.js';
 import type { Request, Response } from 'express';
 
@@ -126,7 +126,7 @@ export async function createApiServer(
           return;
         }
         
-        const catalogEntry = findMigrationCatalogEntry(from, to);
+        const catalogEntry = resolveMigrationCatalog(from, to);
         if (!catalogEntry) {
           res.status(400).json({
             error: `Unsupported migration profile: ${from} -> ${to}. Please check the supported catalog.`,
