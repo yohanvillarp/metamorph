@@ -17,6 +17,7 @@ interface PlanRow {
   created_at: string;
   integration_rounds?: number;
   phase?: string;
+  outcome?: string | null;
   applied_at?: string | null;
   applied_branch?: string | null;
 }
@@ -79,6 +80,7 @@ export class SQLiteStateStore implements StateRepository {
     try { this.db.exec('ALTER TABLE plans ADD COLUMN target_path TEXT'); } catch (e) {}
     try { this.db.exec('ALTER TABLE plans ADD COLUMN integration_rounds INTEGER'); } catch (e) {}
     try { this.db.exec('ALTER TABLE plans ADD COLUMN phase TEXT'); } catch (e) {}
+    try { this.db.exec('ALTER TABLE plans ADD COLUMN outcome TEXT'); } catch (e) {}
     try { this.db.exec('ALTER TABLE plans ADD COLUMN applied_at TEXT'); } catch (e) {}
     try { this.db.exec('ALTER TABLE plans ADD COLUMN applied_branch TEXT'); } catch (e) {}
 
@@ -106,8 +108,8 @@ export class SQLiteStateStore implements StateRepository {
 
   async savePlan(plan: MigrationPlan): Promise<void> {
     const stmtPlan = this.db.prepare(`
-      INSERT OR REPLACE INTO plans (id, run_id, target_path, source_framework, target_framework, rules_json, created_at, integration_rounds, phase, applied_at, applied_branch)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO plans (id, run_id, target_path, source_framework, target_framework, rules_json, created_at, integration_rounds, phase, outcome, applied_at, applied_branch)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     stmtPlan.run(
@@ -120,6 +122,7 @@ export class SQLiteStateStore implements StateRepository {
       plan.createdAt.toISOString(),
       plan.integrationRounds ?? 0,
       plan.phase || 'files',
+      plan.outcome || null,
       plan.appliedAt ? plan.appliedAt.toISOString() : null,
       plan.appliedBranch || null
     );
@@ -153,6 +156,7 @@ export class SQLiteStateStore implements StateRepository {
       createdAt: new Date(planRow.created_at),
       integrationRounds: planRow.integration_rounds ?? 0,
       phase: (planRow.phase as MigrationPlan['phase']) || 'files',
+      outcome: (planRow.outcome as MigrationPlan['outcome']) || undefined,
       appliedAt: planRow.applied_at ? new Date(planRow.applied_at) : undefined,
       appliedBranch: planRow.applied_branch || undefined,
       tasks: taskRows.map((row) => ({
