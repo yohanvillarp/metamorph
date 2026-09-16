@@ -72,6 +72,12 @@ export namespace SemanticEventPayloads {
     reason?: string;
   }
 
+  export interface MigrationCompleted {
+    planId: string;
+    outcome?: 'success' | 'failed';
+    reason?: string;
+  }
+
   export interface SystemLog {
     planId: string;
     message: string;
