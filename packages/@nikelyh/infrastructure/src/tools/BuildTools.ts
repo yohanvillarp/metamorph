@@ -74,7 +74,11 @@ export function parseImplicatedFiles(output: string, shadowPath: string): string
     const resolved = path.resolve(abs);
     const inside = resolved === root || resolved.startsWith(root + path.sep);
     if (!inside) return;
-    if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) found.add(resolved);
+    if (fs.existsSync(resolved)) {
+      if (fs.statSync(resolved).isFile()) found.add(resolved);
+    } else {
+      found.add(resolved);
+    }
   };
 
   for (const re of patterns) {

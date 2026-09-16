@@ -5,7 +5,7 @@ import {
   SituationSpecification,
   Tool
 } from '@mozaik-ai/core';
-import { findMigrationCatalogEntry, formatCatalogRules, SemanticEventName, SemanticEventPayloads } from '@nikelyh/domain';
+import { resolveMigrationCatalog, formatCatalogRules, SemanticEventName, SemanticEventPayloads } from '@nikelyh/domain';
 import * as fs from 'fs';
 import { collectFileHints } from '../migration/registry';
 import { join, leave, resolveRuntime, runLoop, sendEvent } from '../runtime';
@@ -86,12 +86,19 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
     await repository.updateTaskStatus(planId, filePath, 'in_progress');
 
     const { createAgent: createMozaikAgent } = await import('@mozaik-ai/core');
+    const { findShadowRoot } = await import('../utils/NextMigrationHints');
+    const shadowRoot = findShadowRoot(filePath);
+    let workerTools = participant.getTools();
+    if (shadowRoot) {
+      const { createShadowTools } = await import('@nikelyh/infrastructure');
+      workerTools = createShadowTools(shadowRoot);
+    }
     
     const tempAgent = createMozaikAgent({
       name: `Worker-${Date.now()}-${Math.floor(Math.random()*1000)}`,
       capabilities: ['code_refactoring', 'inference'],
       instruction: 'You are a staff engineer migrating a real codebase. Deduce from files on disk: read the target and every local module it imports before writing. Never invent callback prop names or re-implement a screen you could import. Prefer evidence over catalog examples.',
-      tools: participant.getTools(),
+      tools: workerTools,
       handlers: [
       {
         specification: new WhenInferenceCompleted(),
@@ -100,7 +107,7 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
             console.log(`[WorkerAgent:${tempParticipant.getId()}] Inference completed. Emitting FILE_MIGRATED.`);
             
             // Read the actual file content from disk (the Worker's tools already wrote it)
-            let fileContent = 'No content available';
+            let fileContent = '';
             try {
               if (fs.existsSync(filePath)) {
                 fileContent = fs.readFileSync(filePath, 'utf-8');
@@ -152,18 +159,18 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
 
     setTimeout(async () => {
       if (!isDone) {
-        console.error(`[WorkerAgent:${tempAgent.getId()}] Inference timed out.`);
-        await repository.updateTaskStatus(planId, filePath, 'failed', 'Inference timed out');
+        console.error(`[WorkerAgent:${tempAgent.getId()}] Inference timed out after 120s.`);
+        await repository.updateTaskStatus(planId, filePath, 'failed', 'Inference timed out after 120s');
         sendEvent({
           type: SemanticEventName.FILE_FAILED,
           producerId: tempAgent.getId(),
           occurredAt: new Date(),
-          payload: { planId, filePath, reason: 'Inference timed out' },
+          payload: { planId, filePath, reason: 'Inference timed out after 120s' },
         }, tempAgent.getId());
         leave(tempAgent);
         resolve();
       }
-    }, 45000);
+    }, 120000);
   } catch (error: unknown) {
     console.error(`[WorkerAgent:${tempAgent.getId()}] Sync error:`, error);
     if (!isDone) {
@@ -193,7 +200,7 @@ const workOnFileProcessor = {
     if (plan) {
       prompt += `Migration Profile: Transform from ${plan.profile.source} to ${plan.profile.target}.\n`;
       
-      const catalogEntry = findMigrationCatalogEntry(plan.profile.source, plan.profile.target);
+      const catalogEntry = resolveMigrationCatalog(plan.profile.source, plan.profile.target);
       if (catalogEntry) {
         prompt += `\nArchitectural rules (all → ${catalogEntry.layer} → frameworks → this pair):\n`;
         prompt += `${formatCatalogRules(catalogEntry.ruleSections)}\n`;
@@ -279,7 +286,7 @@ const fixRejectedFileProcessor = {
     if (plan) {
       prompt += `Migration Profile: Transform from ${plan.profile.source} to ${plan.profile.target}.\n`;
       
-      const catalogEntry = findMigrationCatalogEntry(plan.profile.source, plan.profile.target);
+      const catalogEntry = resolveMigrationCatalog(plan.profile.source, plan.profile.target);
       if (catalogEntry) {
         prompt += `\nArchitectural rules (all → ${catalogEntry.layer} → frameworks → this pair):\n`;
         prompt += `${formatCatalogRules(catalogEntry.ruleSections)}\n`;
