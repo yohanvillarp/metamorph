@@ -22,12 +22,21 @@ import {
 } from '@nikelyh/infrastructure';
 import { MigrationRunner } from '@nikelyh/application';
 
+function logStartupContext() {
+  const isDev = process.env.METAMORPH_DEV === '1';
+  console.log(chalk.gray(`[Metamorph] CWD: ${process.cwd()}`));
+  console.log(chalk.gray(`[Metamorph] Binary: ${import.meta.url}`));
+  if (!isDev && import.meta.url.includes('/src/')) {
+    console.log(chalk.yellow(`[Metamorph] Notice: Running directly from source without METAMORPH_DEV=1.`));
+  }
+}
+
 const program = new Command();
 
 program
   .name('metamorph')
   .description('AI-powered technology migration tool using Mozaik Agents')
-  .version('1.0.0');
+  .version('2.1.0');
 
 // ─── RUN COMMAND ───────────────────────────────────────────
 
@@ -37,6 +46,7 @@ program
   .option('--from <source>', 'Source framework (e.g. express)')
   .option('--to <target>', 'Target framework (e.g. fastify)')
   .action(async (targetPathArg: string | undefined, options: { from?: string; to?: string }) => {
+    logStartupContext();
     let targetPath = targetPathArg || '.';
     const { select, input } = await import('@inquirer/prompts');
 
@@ -125,11 +135,44 @@ program
 
       spinner.succeed(`Migration dispatched! Plan: ${result.planId}`);
       console.log(chalk.gray(`Shadow: ${result.shadowPath}`));
-      console.log(chalk.blue(`\n⏳ Agents are now working...`));
+      console.log(chalk.blue(`\n⏳ Swarm is executing migration in shadow workspace...`));
 
-      await new Promise((resolve) => setTimeout(resolve, 20000));
-      console.log(chalk.green(`\n✅ Migration simulation finished.`));
-      process.exit(0);
+      const waitSpinner = ora('Waiting for swarm to complete migration...').start();
+      const startTime = Date.now();
+      const MAX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+      while (true) {
+        if (Date.now() - startTime >= MAX_TIMEOUT_MS) {
+          waitSpinner.fail(chalk.red(`Migration timed out after 30 minutes.`));
+          process.exit(1);
+        }
+
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const plan = await store.getPlan(result.planId);
+        if (!plan) continue;
+
+        const terminalTasks = plan.tasks.filter((t) => t.status === 'completed' || t.status === 'failed');
+        const inProgressTasks = plan.tasks.filter((t) => t.status === 'in_progress');
+        const pendingTasks = plan.tasks.filter((t) => t.status === 'pending');
+
+        waitSpinner.text = `Phase: ${plan.phase || 'files'} | Tasks: ${terminalTasks.length}/${plan.tasks.length} terminal (${inProgressTasks.length} in progress, ${pendingTasks.length} pending)`;
+
+        if (plan.phase === 'completed' || plan.phase === 'failed') {
+          if (plan.outcome === 'success' || (plan.phase === 'completed' && plan.outcome !== 'failed')) {
+            waitSpinner.succeed(chalk.green(`\n✅ Migration finished successfully in shadow workspace!`));
+            console.log(chalk.white(`\nNext steps:`));
+            console.log(chalk.gray(`  1. Review changes in shadow workspace: `) + chalk.cyan(result.shadowPath));
+            console.log(chalk.gray(`  2. Apply changes to a dedicated Git branch: `) + chalk.cyan(`metamorph apply ${result.runId} ${targetPath}\n`));
+            process.exit(0);
+          } else {
+            waitSpinner.fail(chalk.red(`\n❌ Migration failed in shadow workspace.`));
+            console.log(chalk.yellow(`Check .metamorph/shadow/${result.runId}/MIGRATION.md or run 'metamorph ui' for failure details.`));
+            console.log(chalk.gray(`Your original codebase in "${targetPath}" remains completely untouched.\n`));
+            process.exit(1);
+          }
+        }
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       spinner.fail(`Migration failed: ${errorMessage}`);
@@ -236,6 +279,7 @@ program
   .description('Start the Metamorph Dashboard API server')
   .option('-p, --port <number>', 'Port for the API server', '9876')
   .action(async (options) => {
+    logStartupContext();
     let desiredPort = parseInt(options.port, 10);
     const spinner = ora('Starting Metamorph API server...').start();
     try {
