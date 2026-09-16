@@ -53,7 +53,6 @@ export class MigrationRunner {
    */
   async startMigration(request: MigrationRequest): Promise<MigrationResult> {
     this.ensureInitialized();
-    await this.store.reset();
     
     // Clean up old shadow workspaces to save disk space
     this.workspace.cleanupOldRuns(3);

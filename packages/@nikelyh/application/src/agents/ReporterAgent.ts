@@ -337,25 +337,27 @@ const ownAnswerProcessor = {
 
 const completedProcessor = {
   async apply({ event, participant }: SituationContext) {
-    const p = event.payload as { planId: string };
+    const p = event.payload as SemanticEventPayloads.MigrationCompleted;
     const runtime = resolveRuntime();
     const board = runtime.state.journal(p.planId);
     const plan = await runtime.state.repository.getPlan(p.planId);
     if (!plan) return;
 
     const shadowPath = await shadowPathFor(plan, board);
+    const isFailed = plan.phase === 'failed' || plan.outcome === 'failed' || p.outcome === 'failed';
+    const effectivePhase = isFailed ? 'failed' : (plan.phase || 'completed');
     const draft = fallbackReport({
       source: plan.profile.source,
       target: plan.profile.target,
       targetPath: plan.targetPath,
       runId: plan.runId,
-      phase: plan.phase,
+      phase: effectivePhase,
       tasks: plan.tasks || [],
       notes: board.notes,
       startedAt: board.startedAt,
     });
 
-    board.pendingStatusPhase = plan.phase === 'failed' ? 'failed' : 'completed';
+    board.pendingStatusPhase = isFailed ? 'failed' : 'completed';
 
     try {
       const path = await import('node:path');
@@ -364,7 +366,7 @@ const completedProcessor = {
         log(participant.getId(), p.planId, 'Reporter draft is still running; Status will be patched when it finishes (no second model call).');
         return;
       }
-      const result = await writeOrPatchMigrationMd(dest, plan.phase, draft);
+      const result = await writeOrPatchMigrationMd(dest, effectivePhase, draft);
       board.pendingStatusPhase = undefined;
       log(
         participant.getId(),
