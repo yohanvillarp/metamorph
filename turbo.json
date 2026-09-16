@@ -5,6 +5,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**"]
     },
+    "@nikelyh/metamorph#build": {
+      "dependsOn": ["^build", "dashboard#build"],
+      "outputs": ["dist/**"]
+    },
     "lint": {
       "dependsOn": ["^lint"]
     },

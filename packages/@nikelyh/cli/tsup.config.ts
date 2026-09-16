@@ -40,6 +40,9 @@ export default defineConfig({
         if (patched !== content) {
           fs.writeFileSync(filePath, patched, 'utf-8');
         }
+        if (/from ["']sqlite["']/.test(patched) || /import\(["']sqlite["']\)/.test(patched)) {
+          throw new Error(`❌ Unprefixed sqlite import detected in ${file}. Expected node:sqlite.`);
+        }
       }
     }
 
@@ -49,7 +52,7 @@ export default defineConfig({
       fs.cpSync(src, dest, { recursive: true });
       console.log('✅ Dashboard UI copied to CLI dist/public');
     } else {
-      console.log('⚠️ Dashboard UI dist not found. Run build in apps/dashboard first.');
+      throw new Error(`❌ Dashboard UI dist not found at ${src}. Ensure dashboard#build ran before building CLI.`);
     }
   }
 });
