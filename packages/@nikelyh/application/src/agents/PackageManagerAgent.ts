@@ -8,7 +8,7 @@ import {
   Agent,
 } from '@mozaik-ai/core';
 import { resolveRuntime, sendEvent } from '../runtime';
-import { SemanticEventName, SemanticEventPayloads, findMigrationCatalogEntry } from '@nikelyh/domain';
+import { SemanticEventName, SemanticEventPayloads, resolveMigrationCatalog } from '@nikelyh/domain';
 
 /**
  * Specification to match the MIGRATION_STARTED event on the bus.
@@ -59,7 +59,7 @@ const managePackagesProcessor = {
       return;
     }
 
-    const catalogEntry = findMigrationCatalogEntry(plan.profile.source, plan.profile.target);
+    const catalogEntry = resolveMigrationCatalog(plan.profile.source, plan.profile.target);
     if (!catalogEntry) {
       console.log(`[PackageManagerAgent] No catalog entry found for ${plan.profile.source} -> ${plan.profile.target}`);
       await emitPackagesReady('failed');

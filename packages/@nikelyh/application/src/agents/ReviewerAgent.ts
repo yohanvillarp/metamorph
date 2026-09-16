@@ -6,17 +6,15 @@ import {
   SituationSpecification,
   Tool,
 } from '@mozaik-ai/core';
-import { findMigrationCatalogEntry, formatCatalogRules, SemanticEventName, SemanticEventPayloads } from '@nikelyh/domain';
+import { resolveMigrationCatalog, formatCatalogRules, SemanticEventName, SemanticEventPayloads } from '@nikelyh/domain';
 import { collectFileHints } from '../migration/registry';
 import { join, leave, resolveRuntime, runLoop, sendEvent } from '../runtime';
 import * as path from 'path';
 import { buildNeighborContext } from '../utils/NeighborContext';
+import { classifyMissingFile } from '../utils/classifyMissingFile';
 import {
   analyzeReactToNextStructure,
   findShadowRoot,
-  hasNextAppRoutes,
-  isFsdPageComponent,
-  isSpaRootComponent,
 } from '../utils/NextMigrationHints';
 
 class ConcurrencyQueue {
@@ -59,16 +57,7 @@ class WhenFileMigrated extends SituationSpecification {
 
 class WhenReviewCompleted extends SituationSpecification {
   isSatisfiedBy({ event, participant }: SituationContext): boolean {
-    // DEBUG: Log EVERY event that hits this specification
-    console.log(`[DEBUG:WhenReviewCompleted] Event received -> type: "${event.type}", producerId: "${event.producerId}", participantId: "${participant.getId()}", match: ${event.type === 'model.answer' && event.producerId === participant.getId()}`);
     return event.type === 'model.answer' && event.producerId === participant.getId();
-  }
-}
-
-// DEBUG: Catch-all specification to see ALL events hitting the temp agent
-class WhenAnythingHappens extends SituationSpecification {
-  isSatisfiedBy(): boolean {
-    return true; // matches everything
   }
 }
 
@@ -83,7 +72,6 @@ const reviewFileProcessor = {
         const resolve = () => {
           if (!isDone) {
             isDone = true;
-            console.log(`[DEBUG:ReviewerAgent] Promise resolved for ${payload.filePath}`);
             originalResolve();
           }
         };
@@ -98,15 +86,6 @@ const reviewFileProcessor = {
       instruction: 'You are a staff engineer reviewing a migrated file against its neighbors. Reject if public props/emits do not match imported modules, if a router file re-implements a screen instead of importing it, or if a screen was hollowed out. UI that lived under src/pages in a SPA is not a Next Pages Router file. Do not reject a file just because it lacks every catalog feature. FATAL_MISMATCH only for an unfixable paradigm break.',
       tools: [], // No tools to avoid Gemini thought_signature crash
       handlers: [
-        // DEBUG: Catch-all handler to log every event this agent receives
-        {
-          specification: new WhenAnythingHappens(),
-          processor: {
-            async apply({ event: anyEvent, participant: anyParticipant }) {
-              console.log(`[DEBUG:ReviewerAgent:${reviewerId}:CATCH_ALL] Event -> type: "${anyEvent.type}", producerId: "${anyEvent.producerId}", myId: "${anyParticipant.getId()}", payload keys: ${Object.keys((anyEvent.payload as Record<string, unknown>) || {}).join(',')}`);
-            }
-          }
-        },
         {
           specification: new WhenReviewCompleted(),
           processor: {
@@ -184,17 +163,29 @@ const reviewFileProcessor = {
     if (!existsSync(payload.filePath)) {
       const { sendEvent } = await import('../runtime');
       const planForMissing = await runtime.state.repository.getPlan(payload.planId);
-      const target = planForMissing?.profile.target;
+      const sourceFramework = planForMissing?.profile.source || 'react';
+      const targetFramework = planForMissing?.profile.target || 'next';
       const shadowRoot = findShadowRoot(payload.filePath);
-      const deletedFsdPage = target === 'next' && isFsdPageComponent(payload.filePath);
-      const viewsReplacement = payload.filePath.replace(/([/\\])src\1pages\1/, '$1src$1views$1');
-      const fsdMovedToViews = deletedFsdPage && existsSync(viewsReplacement);
-      const deletedRootWithoutRoutes = target === 'next'
-        && isSpaRootComponent(payload.filePath)
-        && (!shadowRoot || !hasNextAppRoutes(shadowRoot));
 
-      if ((deletedFsdPage && !fsdMovedToViews) || deletedRootWithoutRoutes) {
-        console.log(`[ReviewerAgent:${reviewerId}] Missing ${payload.filePath} is not a valid Next.js move. Rejecting.`);
+      const classification = classifyMissingFile({
+        filePath: payload.filePath,
+        source: sourceFramework,
+        target: targetFramework,
+        shadowRoot,
+        fileExists: existsSync,
+      });
+
+      if (classification.verdict === 'approved') {
+        console.log(`[ReviewerAgent:${reviewerId}] Missing ${payload.filePath} approved: ${classification.reason}`);
+        await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'completed');
+        sendEvent({
+          type: SemanticEventName.FILE_REVIEWED,
+          producerId: tempAgent.getId(),
+          occurredAt: new Date(),
+          payload: { planId: payload.planId, filePath: payload.filePath },
+        }, tempAgent.getId());
+      } else {
+        console.log(`[ReviewerAgent:${reviewerId}] Missing ${payload.filePath} rejected:`, classification.errors);
         sendEvent({
           type: SemanticEventName.FILE_REJECTED,
           producerId: tempAgent.getId(),
@@ -202,28 +193,10 @@ const reviewFileProcessor = {
           payload: {
             planId: payload.planId,
             filePath: payload.filePath,
-            errors: deletedFsdPage
-              ? [
-                  'This file lived under src/pages as SPA UI. Next.js reserves src/pages for the Pages Router — move the tree to a non-reserved folder and import those screens from src/app. Do not delete the UI without a replacement.',
-                ]
-              : [
-                  'The SPA root was deleted before src/app/**/page.tsx existed with real UI. Recreate routing as Next App Router pages that import the original screen components. Do not import App from those pages.',
-                ],
+            errors: classification.errors || ['File does not exist and has no demonstrable replacement'],
           },
         }, tempAgent.getId());
-        leave(tempAgent);
-        resolve();
-        return;
       }
-
-      console.log(`[ReviewerAgent:${reviewerId}] File ${payload.filePath} does not exist on disk (likely intentionally deleted/moved). Auto-approving.`);
-      await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'completed');
-      sendEvent({
-        type: SemanticEventName.FILE_REVIEWED,
-        producerId: tempAgent.getId(),
-        occurredAt: new Date(),
-        payload: { planId: payload.planId, filePath: payload.filePath },
-      }, tempAgent.getId());
 
       leave(tempAgent);
       resolve();
@@ -291,7 +264,7 @@ const reviewFileProcessor = {
     
     if (plan) {
       prompt += `Migration Profile: Transform from ${plan.profile.source} to ${plan.profile.target}.\n`;
-      const catalogEntry = findMigrationCatalogEntry(plan.profile.source, plan.profile.target);
+      const catalogEntry = resolveMigrationCatalog(plan.profile.source, plan.profile.target);
       if (catalogEntry) {
         prompt += `\nArchitectural rules (all → ${catalogEntry.layer} → frameworks → this pair; apply only if relevant to this file):\n`;
         prompt += `${formatCatalogRules(catalogEntry.ruleSections)}\n`;
@@ -331,20 +304,20 @@ const reviewFileProcessor = {
 
       setTimeout(async () => {
         if (!isDone) {
-          console.error(`[ReviewerAgent:${reviewerId}] ⏰ TIMEOUT after 45s for ${payload.filePath}. Model never responded.`);
+          console.error(`[ReviewerAgent:${reviewerId}] ⏰ TIMEOUT after 120s for ${payload.filePath}. Model never responded.`);
           const { resolveRuntime } = await import('../runtime');
           const runtime = resolveRuntime();
-          await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', 'Inference timed out after 45s');
+          await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', 'Inference timed out after 120s');
           sendEvent({
             type: SemanticEventName.FILE_FAILED,
             producerId: tempAgent.getId(),
             occurredAt: new Date(),
-            payload: { planId: payload.planId, filePath: payload.filePath, reason: 'Inference timed out after 45s' },
+            payload: { planId: payload.planId, filePath: payload.filePath, reason: 'Inference timed out after 120s' },
           }, tempAgent.getId());
           leave(tempAgent);
           resolve();
         }
-      }, 45000);
+      }, 120000);
     } catch (error: unknown) {
       console.error(`[ReviewerAgent:${reviewerId}] Sync error:`, error);
       if (!isDone) {
