@@ -13,6 +13,12 @@ export interface ApplyMigrationResult {
 const COPY_IGNORED = ['node_modules', '.git', '.metamorph', 'dist', 'build', 'out', 'coverage', '.next'];
 const GITIGNORE_ENTRIES = ['.metamorph/', '.next/', 'node_modules/', 'dist/', 'build/', 'coverage/', '.env'];
 
+export function isCopyIgnored(itemName: string): boolean {
+  if (COPY_IGNORED.includes(itemName)) return true;
+  if (itemName === '.env' || itemName.startsWith('.env.')) return true;
+  return false;
+}
+
 export class MigrationIntegrator {
   private shadowWorkspace: ShadowWorkspace;
 
@@ -37,6 +43,22 @@ export class MigrationIntegrator {
       throw new Error(
         'Metamorph apply requires a Git repository. Run this from a project that already has git (including monorepo packages whose .git lives in a parent folder). Nested git init is not supported.'
       );
+    }
+
+    // Defense against applying to scratch/playgrounds within Metamorph repository itself
+    const rootPkgJson = path.join(gitRoot, 'package.json');
+    if (fs.existsSync(rootPkgJson)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(rootPkgJson, 'utf-8'));
+        const normalizedTarget = resolvedTarget.replace(/\\/g, '/');
+        if (pkg.name === 'metamorph-monorepo' && normalizedTarget.includes('/scratch/')) {
+          throw new Error(
+            `BLOCKED: Cannot apply to "${resolvedTarget}" because it is inside the development scratch/ directory of the Metamorph repository. Use a standalone git repository for user project migrations.`
+          );
+        }
+      } catch (e: unknown) {
+        if (e instanceof Error && e.message.startsWith('BLOCKED:')) throw e;
+      }
     }
 
     if (this.isIgnoredByGit(gitRoot, resolvedTarget)) {
@@ -110,6 +132,17 @@ export class MigrationIntegrator {
     gitRoot: string,
     branchName: string
   ): Promise<ApplyMigrationResult> {
+    const relativeTarget = path.relative(gitRoot, targetPath).replace(/\\/g, '/');
+    const addPath = relativeTarget === '' ? '.' : relativeTarget;
+
+    // Ensure the target directory has no uncommitted changes before switching branches
+    const dirtyStatus = this.git(['status', '--porcelain', '--', addPath], gitRoot).trim();
+    if (dirtyStatus) {
+      throw new Error(
+        `Cannot apply migration: the target directory has uncommitted changes:\n${dirtyStatus}\nPlease commit or stash your changes before applying.`
+      );
+    }
+
     try {
       this.git(['checkout', '-B', branchName], gitRoot);
     } catch (e: unknown) {
@@ -121,9 +154,6 @@ export class MigrationIntegrator {
 
     this.copyShadowToTarget(shadowDir, targetPath);
     this.ensureApplyGitignore(gitRoot);
-
-    const relativeTarget = path.relative(gitRoot, targetPath).replace(/\\/g, '/');
-    const addPath = relativeTarget === '' ? '.' : relativeTarget;
 
     try {
       try {
@@ -161,14 +191,14 @@ export class MigrationIntegrator {
     if (fs.existsSync(targetPath)) {
       const targetItems = fs.readdirSync(targetPath);
       for (const item of targetItems) {
-        if (COPY_IGNORED.includes(item)) continue;
+        if (isCopyIgnored(item)) continue;
         fs.removeSync(path.join(targetPath, item));
       }
     }
 
     const shadowItems = fs.readdirSync(shadowDir);
     for (const item of shadowItems) {
-      if (COPY_IGNORED.includes(item)) continue;
+      if (isCopyIgnored(item)) continue;
       
       const itemSrc = path.join(shadowDir, item);
       const itemDest = path.join(targetPath, item);
