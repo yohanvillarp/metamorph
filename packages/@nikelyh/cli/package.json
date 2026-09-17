@@ -1,6 +1,17 @@
 {
   "name": "@nikelyh/metamorph",
   "version": "2.1.0",
+  "description": "Autonomous multi-agent migration and refactoring engine powered by Mozaik v4",
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yohanvillarp/metamorph.git",
+    "directory": "packages/@nikelyh/cli"
+  },
+  "homepage": "https://github.com/yohanvillarp/metamorph#readme",
+  "bugs": {
+    "url": "https://github.com/yohanvillarp/metamorph/issues"
+  },
   "main": "dist/index.js",
   "bin": {
     "metamorph": "./bin/metamorph.js"
