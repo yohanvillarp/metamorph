@@ -90,25 +90,22 @@ const reviewFileProcessor = {
           specification: new WhenReviewCompleted(),
           processor: {
             async apply({ event, participant: tempParticipant }) {
-              console.log(`[DEBUG:ReviewerAgent:${reviewerId}] model.answer RECEIVED!`);
+              if (isDone) {
+                return;
+              }
+
               const answerItem = (event.payload as Record<string, any>).answer;
-              // Extract text: Mozaik puts it in answerItem.content.text, not answerItem.text
               const answerText = answerItem?.content?.text || answerItem?.text || null;
-              console.log(`[DEBUG:ReviewerAgent:${reviewerId}] answerText:`, answerText);
               
               let reviewResult: { status: string; errors: string[] } | null = null;
               if (answerText) {
                 try {
                   reviewResult = JSON.parse(answerText);
-                  console.log(`[DEBUG:ReviewerAgent:${reviewerId}] Parsed result:`, JSON.stringify(reviewResult));
                 } catch (e) {
                   console.error(`[ReviewerAgent:${reviewerId}] Failed to parse JSON:`, e);
                 }
-              } else {
-                console.warn(`[DEBUG:ReviewerAgent:${reviewerId}] answerItem has no extractable text.`);
               }
 
-              // Emit review result event BEFORE leaving (sendEvent needs an active participant)
               if (reviewResult) {
                 const participantId = tempParticipant.getId();
                 try {
@@ -152,9 +149,7 @@ const reviewFileProcessor = {
       ],
     });
     
-    console.log(`[DEBUG:ReviewerAgent:${reviewerId}] tempAgent created with id: ${tempAgent.getId()}`);
     join(tempAgent);
-    console.log(`[DEBUG:ReviewerAgent:${reviewerId}] tempAgent joined the runtime`);
 
     const runtime = resolveRuntime();
 
@@ -282,7 +277,6 @@ const reviewFileProcessor = {
     console.log(`[ReviewerAgent:${reviewerId}] Starting inference loop for ${payload.filePath} with model ${modelToUse}...`);
 
     try {
-      console.log(`[DEBUG:ReviewerAgent:${reviewerId}] Calling runLoop with agentId: ${tempAgent.getId()}`);
       runLoop(tempAgent.getId(), prompt, {
         model: modelToUse, 
         context: tempAgent.getMemory().getContext(),
@@ -300,7 +294,6 @@ const reviewFileProcessor = {
           strict: true
         }
       });
-      console.log(`[DEBUG:ReviewerAgent:${reviewerId}] runLoop called successfully (fire-and-forget)`);
 
       setTimeout(async () => {
         if (!isDone) {

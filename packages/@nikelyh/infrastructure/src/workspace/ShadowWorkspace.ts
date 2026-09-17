@@ -74,20 +74,21 @@ export class ShadowWorkspace {
    * Cleans up old shadow runs to save disk space, keeping only the specified number of most recent runs.
    * @param keepCount Number of recent runs to keep (default: 3)
    */
-  public cleanupOldRuns(keepCount: number = 3): void {
+  public cleanupOldRuns(keepCount: number = 3, protectedRunIds: string[] = []): void {
     if (!fs.existsSync(this.baseDir)) return;
-    
+
+    const protectedSet = new Set(protectedRunIds);
     const runs = fs.readdirSync(this.baseDir)
       .filter(f => f.startsWith('run_') && fs.statSync(join(this.baseDir, f)).isDirectory());
-      
-    // Sort chronologically (run_<timestamp>), oldest first
+
     runs.sort();
-    
-    if (runs.length > keepCount) {
-      const toDelete = runs.slice(0, runs.length - keepCount);
-      for (const run of toDelete) {
-        this.rollback(run);
-      }
+
+    const unprotected = runs.filter((run) => !protectedSet.has(run));
+    if (unprotected.length <= keepCount) return;
+
+    const toDelete = unprotected.slice(0, unprotected.length - keepCount);
+    for (const run of toDelete) {
+      this.rollback(run);
     }
   }
 }

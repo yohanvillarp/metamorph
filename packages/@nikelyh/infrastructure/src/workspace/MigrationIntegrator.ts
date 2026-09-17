@@ -11,7 +11,6 @@ export interface ApplyMigrationResult {
 }
 
 const COPY_IGNORED = ['node_modules', '.git', '.metamorph', 'dist', 'build', 'out', 'coverage', '.next'];
-const GITIGNORE_ENTRIES = ['.metamorph/', '.next/', 'node_modules/', 'dist/', 'build/', 'coverage/', '.env'];
 
 export function isCopyIgnored(itemName: string): boolean {
   if (COPY_IGNORED.includes(itemName)) return true;
@@ -112,19 +111,6 @@ export class MigrationIntegrator {
     }
   }
 
-  private ensureApplyGitignore(gitRoot: string) {
-    const gitignorePath = path.join(gitRoot, '.gitignore');
-    const existing = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf-8') : '';
-    const missing = GITIGNORE_ENTRIES.filter((entry) => {
-      const name = entry.replace(/\/$/, '').replace('.', '\\.');
-      const pattern = new RegExp(`(^|\\n)${name}(/)?(\\n|$)`);
-      return !pattern.test(existing.replace(/\r/g, '\n'));
-    });
-    if (missing.length === 0) return;
-    const block = `\n# Metamorph apply\n${missing.join('\n')}\n`;
-    fs.appendFileSync(gitignorePath, block, 'utf-8');
-  }
-
   private async applyWithGit(
     runId: string,
     shadowDir: string,
@@ -153,7 +139,6 @@ export class MigrationIntegrator {
     }
 
     this.copyShadowToTarget(shadowDir, targetPath);
-    this.ensureApplyGitignore(gitRoot);
 
     try {
       try {
