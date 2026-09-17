@@ -127,24 +127,35 @@ function findViewPages(shadowRoot: string): string[] {
   return listFilesRecursive(viewsDir).filter((file) => /(?:^|[/\\])(?:.+Page|page)\.(t|j)sx$/i.test(file));
 }
 
-function localTsxImports(fromFile: string, content: string): Array<{ tag: string; absPath: string }> {
+function resolveLocalImport(fromFile: string, specifier: string): string | null {
   const dir = path.dirname(fromFile);
+  const resolved = specifier.startsWith('@/')
+    ? path.join(findSrcRoot(fromFile), specifier.slice(2))
+    : path.resolve(dir, specifier);
+  const candidates = [
+    resolved,
+    `${resolved}.tsx`,
+    `${resolved}.jsx`,
+    `${resolved}.ts`,
+    `${resolved}.js`,
+    path.join(resolved, 'index.tsx'),
+    path.join(resolved, 'index.ts'),
+  ];
+  return candidates.find((file) => {
+    try {
+      return fs.existsSync(file) && fs.statSync(file).isFile();
+    } catch {
+      return false;
+    }
+  }) || null;
+}
+
+function localTsxImports(fromFile: string, content: string): Array<{ tag: string; absPath: string }> {
   const out: Array<{ tag: string; absPath: string }> = [];
   const re = /import\s+(?:\{([^}]+)\}|(\w+))\s+from\s+['"](\.\.?\/[^'"]+|@\/[^'"]+)['"]/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(content)) !== null) {
-    const resolved = match[3].startsWith('@/')
-      ? path.join(findSrcRoot(fromFile), match[3].slice(2))
-      : path.resolve(dir, match[3]);
-    const candidates = [
-      resolved,
-      `${resolved}.tsx`,
-      `${resolved}.jsx`,
-      `${resolved}.ts`,
-      path.join(resolved, 'index.tsx'),
-      path.join(resolved, 'index.ts'),
-    ];
-    const absPath = candidates.find((file) => fs.existsSync(file));
+    const absPath = resolveLocalImport(fromFile, match[3]);
     if (!absPath) continue;
     if (match[2]) out.push({ tag: match[2], absPath });
     if (match[1]) {
@@ -155,6 +166,39 @@ function localTsxImports(fromFile: string, content: string): Array<{ tag: string
     }
   }
   return out;
+}
+
+export function unresolvedLocalImports(fromFile: string, content: string): string[] {
+  const out: string[] = [];
+  const re = /from\s+['"](\.\.?\/[^'"]+|@\/[^'"]+)['"]/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(content)) !== null) {
+    if (!resolveLocalImport(fromFile, match[1])) {
+      out.push(match[1]);
+    }
+  }
+  return out;
+}
+
+export function analyzeUnresolvedLocalImports(shadowRoot: string): NextStructureIssue[] {
+  const issues: NextStructureIssue[] = [];
+  const files = [
+    ...listFilesRecursive(path.join(shadowRoot, 'src', 'app')),
+    ...listFilesRecursive(path.join(shadowRoot, 'app')),
+  ].filter((file) => /\.(t|j)sx$/.test(file));
+
+  for (const file of files) {
+    const content = fs.readFileSync(file, 'utf-8');
+    const missing = unresolvedLocalImports(file, content);
+    if (missing.length === 0) continue;
+    issues.push({
+      filePath: file,
+      errors: [
+        `${path.relative(shadowRoot, file)} imports modules that are not on disk: ${missing.join(', ')}. Do not import a deleted App/main from App Router pages — import the surviving screen component instead.`,
+      ],
+    });
+  }
+  return issues;
 }
 
 function findSrcRoot(filePath: string): string {
@@ -311,6 +355,7 @@ export function analyzeReactToNextStructure(shadowRoot: string): NextStructureIs
     });
   }
 
+  issues.push(...analyzeUnresolvedLocalImports(shadowRoot));
   issues.push(...analyzeReactToNextComposition(shadowRoot));
   issues.push(...analyzeCallbackPropMismatches(shadowRoot));
 

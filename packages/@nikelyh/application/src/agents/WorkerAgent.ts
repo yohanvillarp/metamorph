@@ -11,6 +11,7 @@ import { collectFileHints } from '../migration/registry';
 import { join, leave, resolveRuntime, runLoop, sendEvent } from '../runtime';
 import { buildFileTree } from '../utils/FileTreeBuilder';
 import { buildNeighborContext } from '../utils/NeighborContext';
+import { MISSING_AFTER_WORKER, workerCompletionKind } from '../utils/workerCompletion';
 
 // Track retry counts per file to prevent infinite reject-repair loops
 const MAX_RETRIES = 2;
@@ -103,26 +104,41 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
       {
         specification: new WhenInferenceCompleted(),
         processor: {
-          async apply({ event: completionEvent, participant: tempParticipant }) {
-            console.log(`[WorkerAgent:${tempParticipant.getId()}] Inference completed. Emitting FILE_MIGRATED.`);
-            
-            // Read the actual file content from disk (the Worker's tools already wrote it)
+          async apply({ participant: tempParticipant }) {
+            if (isDone) {
+              return;
+            }
+
+            const exists = fs.existsSync(filePath);
+            if (workerCompletionKind(exists) === 'failed_missing') {
+              console.warn(`[WorkerAgent:${tempParticipant.getId()}] File not found on disk after inference: ${filePath}`);
+              await repository.updateTaskStatus(planId, filePath, 'failed', MISSING_AFTER_WORKER);
+              sendEvent(
+                {
+                  type: SemanticEventName.FILE_FAILED,
+                  producerId: tempParticipant.getId(),
+                  occurredAt: new Date(),
+                  payload: { planId, filePath, reason: MISSING_AFTER_WORKER },
+                },
+                tempParticipant.getId()
+              );
+              leave(tempParticipant);
+              resolve();
+              return;
+            }
+
             let fileContent = '';
             try {
-              if (fs.existsSync(filePath)) {
-                fileContent = fs.readFileSync(filePath, 'utf-8');
-                console.log(`[WorkerAgent:${tempParticipant.getId()}] Read ${fileContent.length} chars from ${filePath}`);
-              } else {
-                console.warn(`[WorkerAgent:${tempParticipant.getId()}] File not found on disk: ${filePath}`);
-              }
+              fileContent = fs.readFileSync(filePath, 'utf-8');
+              console.log(`[WorkerAgent:${tempParticipant.getId()}] Read ${fileContent.length} chars from ${filePath}`);
             } catch (e) {
               console.error(`[WorkerAgent:${tempParticipant.getId()}] Error reading file:`, e);
             }
-            
-            // Stay in_progress until the Reviewer approves. Marking completed here
-            // made the dashboard look finished while reviews and npm install still ran.
+
+            console.log(`[WorkerAgent:${tempParticipant.getId()}] Inference completed. Emitting FILE_MIGRATED.`);
+            // Stay in_progress until the Reviewer approves.
             await repository.updateTaskStatus(planId, filePath, 'in_progress');
-            
+
             sendEvent(
               {
                 type: SemanticEventName.FILE_MIGRATED,
@@ -131,7 +147,7 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
                 payload: {
                   planId: planId,
                   filePath: filePath,
-                  diff: fileContent, 
+                  diff: fileContent,
                 } as SemanticEventPayloads.FileMigrated,
               },
               tempParticipant.getId()

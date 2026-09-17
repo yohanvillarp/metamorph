@@ -55,7 +55,9 @@ export class MigrationRunner {
     this.ensureInitialized();
     
     // Clean up old shadow workspaces to save disk space
-    this.workspace.cleanupOldRuns(3);
+    const existing = await this.store.getAllPlans();
+    const protectedRunIds = existing.filter((p) => p.appliedAt).map((p) => p.runId);
+    this.workspace.cleanupOldRuns(3, protectedRunIds);
 
     const runId = `run_${Date.now()}`;
     const shadowPath = this.workspace.cloneDirectory(request.targetPath, runId);
@@ -66,6 +68,7 @@ export class MigrationRunner {
       runId: runId,
       profile: { source: request.from, target: request.to },
       targetPath: request.targetPath,
+      phase: 'files',
       tasks: [
         { filePath: 'system:package_manager', status: 'pending' }
       ],

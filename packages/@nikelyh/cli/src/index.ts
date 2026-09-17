@@ -158,19 +158,19 @@ program
 
         waitSpinner.text = `Phase: ${plan.phase || 'files'} | Tasks: ${terminalTasks.length}/${plan.tasks.length} terminal (${inProgressTasks.length} in progress, ${pendingTasks.length} pending)`;
 
-        if (plan.phase === 'completed' || plan.phase === 'failed') {
-          if (plan.outcome === 'success' || (plan.phase === 'completed' && plan.outcome !== 'failed')) {
-            waitSpinner.succeed(chalk.green(`\n✅ Migration finished successfully in shadow workspace!`));
-            console.log(chalk.white(`\nNext steps:`));
-            console.log(chalk.gray(`  1. Review changes in shadow workspace: `) + chalk.cyan(result.shadowPath));
-            console.log(chalk.gray(`  2. Apply changes to a dedicated Git branch: `) + chalk.cyan(`metamorph apply ${result.runId} ${targetPath}\n`));
-            process.exit(0);
-          } else {
-            waitSpinner.fail(chalk.red(`\n❌ Migration failed in shadow workspace.`));
-            console.log(chalk.yellow(`Check .metamorph/shadow/${result.runId}/MIGRATION.md or run 'metamorph ui' for failure details.`));
-            console.log(chalk.gray(`Your original codebase in "${targetPath}" remains completely untouched.\n`));
-            process.exit(1);
-          }
+        if (plan.outcome === 'success') {
+          waitSpinner.succeed(chalk.green(`\n✅ Migration finished successfully in shadow workspace!`));
+          console.log(chalk.white(`\nNext steps:`));
+          console.log(chalk.gray(`  1. Review changes in shadow workspace: `) + chalk.cyan(result.shadowPath));
+          console.log(chalk.gray(`  2. Apply changes to a dedicated Git branch: `) + chalk.cyan(`metamorph apply ${result.runId} ${targetPath}\n`));
+          process.exit(0);
+        }
+
+        if (plan.phase === 'failed' || plan.outcome === 'failed') {
+          waitSpinner.fail(chalk.red(`\n❌ Migration failed in shadow workspace.`));
+          console.log(chalk.yellow(`Check .metamorph/shadow/${result.runId}/MIGRATION.md or run 'metamorph ui' for failure details.`));
+          console.log(chalk.gray(`Your original codebase in "${targetPath}" remains completely untouched.\n`));
+          process.exit(1);
         }
       }
     } catch (error: unknown) {

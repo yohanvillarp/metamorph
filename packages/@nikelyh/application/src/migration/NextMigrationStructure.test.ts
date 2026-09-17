@@ -148,6 +148,24 @@ describe('NextMigrationHints & Structure Regression Harness', () => {
     assert.ok(fallbackTargets.some((t) => t.endsWith('page.tsx')), 'Fallback targets must include plugin app router files');
   });
 
+  it('detects src/app/page.tsx that imports a missing ../App', () => {
+    const appDir = path.join(tmpDir, 'src', 'app');
+    fs.mkdirSync(appDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(appDir, 'page.tsx'),
+      `'use client'\nimport App from '../App'\n\nexport default function Page() {\n  return <App />\n}\n`
+    );
+
+    const issues = analyzeReactToNextStructure(tmpDir);
+    const pageIssues = issues.filter((i) => i.filePath.includes('page.tsx'));
+    assert.ok(pageIssues.length > 0, 'Should flag page.tsx that imports a deleted App');
+    const text = pageIssues.flatMap((i) => i.errors).join('\n');
+    assert.match(text, /\.\.\/App/);
+
+    const viaPlugin = collectShadowIssues(tmpDir, { source: 'react', target: 'next' }, 'frontend');
+    assert.match(viaPlugin.flatMap((i) => i.errors).join('\n'), /\.\.\/App/);
+  });
+
   it('passes cleanly with zero issues on a correctly structured Next App Router', () => {
     const viewsDir = path.join(tmpDir, 'src', 'views');
     fs.mkdirSync(viewsDir, { recursive: true });
