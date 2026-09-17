@@ -11,6 +11,8 @@ interface Task {
 
 interface MigrationQueueProps {
   tasks: Task[];
+  phase?: string;
+  outcome?: string;
 }
 
 const FILTERS: { id: StatusFilter; label: string }[] = [
@@ -49,7 +51,7 @@ function StatusBadge({ status }: { status: string }) {
   return <span className="inline-flex items-center gap-1 text-yellow-900 bg-yellow-300 border-2 border-neo-border px-2 py-1 text-[10px] font-black uppercase tracking-widest"><Clock size={14} /> Queued</span>;
 }
 
-export const MigrationQueue = ({ tasks }: MigrationQueueProps) => {
+export const MigrationQueue = ({ tasks, phase, outcome }: MigrationQueueProps) => {
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
 
@@ -90,6 +92,12 @@ export const MigrationQueue = ({ tasks }: MigrationQueueProps) => {
         <div className="h-3 border-2 border-neo-border bg-white">
           <div className="h-full bg-green-400" style={{ width: `${pct}%` }} />
         </div>
+        {outcome === 'failed' && (
+          <div className="flex items-center gap-2 p-2.5 bg-red-200 border-2 border-neo-border text-red-950 text-xs font-black uppercase tracking-wide">
+            <AlertTriangle size={16} className="shrink-0 text-red-700" />
+            <span>Migration phase failed ({phase ?? 'failed'}). Shadow workspace build did not pass.</span>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           {FILTERS.map((item) => (
             <button
