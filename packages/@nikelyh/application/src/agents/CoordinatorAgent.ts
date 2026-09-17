@@ -93,10 +93,28 @@ const startWatchdogProcessor = {
             occurredAt: new Date(),
             payload: {
               planId: p.planId,
-              message: 'Coordinator watchdog stopped after 30 minutes. Integration never became ready (files still in progress, or the run stalled).',
-              level: 'warning',
+              message: 'Coordinator watchdog timed out after 30 minutes. Integration never became ready or the run stalled.',
+              level: 'error',
             },
           }, producerId);
+
+          const currentPlan = await runtime.state.repository.getPlan(p.planId);
+          if (currentPlan && currentPlan.phase !== 'completed' && currentPlan.phase !== 'failed') {
+            currentPlan.phase = 'failed';
+            currentPlan.outcome = 'failed';
+            await runtime.state.repository.savePlan(currentPlan);
+
+            sendEvent({
+              type: SemanticEventName.MIGRATION_COMPLETED,
+              producerId,
+              occurredAt: new Date(),
+              payload: {
+                planId: p.planId,
+                outcome: 'failed',
+                reason: 'Migration timed out after 30 minutes watchdog budget.',
+              } as SemanticEventPayloads.MigrationCompleted,
+            }, producerId);
+          }
           return;
         }
         await emitIntegrationIfReady(producerId, p.planId);
