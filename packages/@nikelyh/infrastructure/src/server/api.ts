@@ -158,15 +158,33 @@ export async function createApiServer(
           });
           return;
         }
-        const integrator = new MigrationIntegrator(migrationRunner.workspace);
-        const result = await integrator.applyMigration(runId, targetPath);
+
         const plans = await store.getAllPlans();
         const plan = plans.find((item) => item.runId === runId);
-        if (plan) {
-          plan.appliedAt = new Date();
-          plan.appliedBranch = result.branch;
-          await store.savePlan(plan);
+        if (!plan) {
+          res.status(404).json({ error: `Plan for run "${runId}" not found in database.` });
+          return;
         }
+
+        if (plan.phase !== 'completed' || plan.outcome !== 'success') {
+          res.status(400).json({
+            error: `Cannot apply migration: plan is not completed successfully (phase: "${plan.phase}", outcome: "${plan.outcome || 'none'}"). Only successful migrations can be applied.`,
+          });
+          return;
+        }
+
+        if (plan.appliedAt) {
+          res.status(400).json({
+            error: `Migration for run "${runId}" has already been applied at ${new Date(plan.appliedAt).toISOString()} to branch ${plan.appliedBranch || 'unknown'}.`,
+          });
+          return;
+        }
+
+        const integrator = new MigrationIntegrator(migrationRunner.workspace);
+        const result = await integrator.applyMigration(runId, targetPath);
+        plan.appliedAt = new Date();
+        plan.appliedBranch = result.branch;
+        await store.savePlan(plan);
         await store.logEvent('migration.applied', { runId, branch: result.branch, targetPath });
         res.json({ ok: true, ...result });
       } catch (error: unknown) {
