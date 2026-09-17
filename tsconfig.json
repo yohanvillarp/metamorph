@@ -9,5 +9,6 @@
     "forceConsistentCasingInFileNames": true,
     "composite": true,
     "declaration": true
-  }
+  },
+  "exclude": ["node_modules", "dist", "scratch", ".metamorph"]
 }
