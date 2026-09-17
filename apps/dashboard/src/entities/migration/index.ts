@@ -26,6 +26,7 @@ export interface MigrationPlan {
   targetFramework: string;
   targetPath: string;
   phase?: 'files' | 'integration' | 'completed' | 'failed';
+  outcome?: 'success' | 'failed';
   appliedAt?: string;
   appliedBranch?: string;
   status: 'pending' | 'in_progress' | 'completed' | 'failed';

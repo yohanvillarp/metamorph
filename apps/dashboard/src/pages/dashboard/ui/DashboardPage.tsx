@@ -199,8 +199,9 @@ export const DashboardPage = () => {
   const completedTasks = latestPlan?.tasks?.filter((t: any) => t.status === 'completed').length || 0;
   const failedTasks = latestPlan?.tasks?.filter((t: any) => t.status === 'failed').length || 0;
 
-  const isFailed = latestPlan?.phase === 'failed';
-  const isFinished = latestPlan?.phase === 'completed' || isFailed;
+  const isFailed = latestPlan?.phase === 'failed' || latestPlan?.outcome === 'failed';
+  const isSuccess = latestPlan?.phase === 'completed' && latestPlan?.outcome === 'success';
+  const isFinished = isSuccess || isFailed;
   const isIntegrating = !isFinished && latestPlan?.phase === 'integration';
 
   const currentRunEvents = useMemo(() => {
@@ -224,6 +225,8 @@ export const DashboardPage = () => {
     || (latestPlan != null && appliedRunId === latestPlan.runId)
     || currentRunEvents.some((e) => String(e.eventName ?? '').toLowerCase().includes('migration.applied'));
 
+  const canApply = Boolean(isSuccess && !isApplied);
+
   const notifiedRunId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -234,12 +237,11 @@ export const DashboardPage = () => {
       isFailed ? 'Run finished with errors' : 'Ready to apply',
       <div className="space-y-4 text-center">
         <p>{isFailed
-          ? 'The swarm stopped because the shadow npm run build (or catalog checks) still failed. Apply is available if you want the partial result; prefer a new run after checking the queue and events.'
-          : 'The swarm finished. Apply copies files (including MIGRATION.md) onto a git branch. Discard drops the shadow run.'}</p>
-        {!isFailed && <p className="font-bold">Apply only once. After that you will see next-step commands, not Apply again.</p>}
+          ? 'The swarm stopped because the shadow npm run build (or catalog checks) failed. Applying this migration is blocked to protect your codebase. Check the queue and events, or start a new run.'
+          : 'All files are migrated and the shadow build passed! Click "Apply Migration" to copy the changes into your repo on a dedicated git branch.'}</p>
       </div>
     );
-  }, [isFinished, isFailed, isApplied, latestPlan, showAlert]);
+  }, [isFinished, isApplied, isFailed, latestPlan]);
 
   // Same run + same event vocabulary as Live Swarm so bars grow with the flow
   const chartData = useMemo(() => {
@@ -287,13 +289,19 @@ export const DashboardPage = () => {
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               {isFinished && !isApplied && (
                 <div className="flex flex-wrap items-center gap-2 border-r-2 border-neo-border pr-4 md:pr-6">
-                  <button 
-                    onClick={handleApplyMigration}
-                    disabled={isApplying}
-                    className="bg-green-400 font-black text-sm uppercase px-4 py-2 border-2 border-neo-border hover:bg-green-500 transition-colors shadow-[4px_4px_0px_0px_var(--neo-text)] active:translate-y-1 active:translate-x-1 active:shadow-none"
-                  >
-                    {isApplying ? 'Applying...' : 'Apply Migration'}
-                  </button>
+                  {canApply ? (
+                    <button 
+                      onClick={handleApplyMigration}
+                      disabled={isApplying}
+                      className="bg-green-400 font-black text-sm uppercase px-4 py-2 border-2 border-neo-border hover:bg-green-500 transition-colors shadow-[4px_4px_0px_0px_var(--neo-text)] active:translate-y-1 active:translate-x-1 active:shadow-none"
+                    >
+                      {isApplying ? 'Applying...' : 'Apply Migration'}
+                    </button>
+                  ) : (
+                    <span className="bg-red-200 text-red-950 font-black text-xs uppercase px-3 py-2 border-2 border-neo-border">
+                      Apply Blocked: Migration Failed
+                    </span>
+                  )}
                   <button 
                     onClick={handleDiscardMigration}
                     className="bg-red-400 font-black text-sm uppercase px-4 py-2 border-2 border-neo-border hover:bg-red-500 transition-colors text-white active:translate-y-1 active:translate-x-1 active:shadow-none"
@@ -364,7 +372,7 @@ export const DashboardPage = () => {
               </p>
               <p className="font-bold text-sm leading-relaxed">
                 {isFailed
-                  ? 'Shadow npm install / npm run build (or catalog checks) failed after repair rounds. The queue should have shown the reopened files. Apply still copies the shadow if you want it; otherwise start a new migration.'
+                  ? 'Shadow npm install / npm run build (or timeout) failed after repair rounds. Applying this migration is blocked to protect your repository from broken code. Discard this run or start a new migration.'
                   : 'Apply copies the shadow result into your repo on a git branch (including MIGRATION.md). Discard deletes the shadow run. Apply is one-shot.'}
               </p>
             </div>
@@ -434,7 +442,7 @@ export const DashboardPage = () => {
             )}
 
             {activeTab === 'queue' && (
-              <MigrationQueue tasks={latestPlan.tasks || []} />
+              <MigrationQueue tasks={latestPlan.tasks || []} phase={latestPlan.phase} outcome={latestPlan.outcome} />
             )}
 
             {activeTab === 'events' && (
