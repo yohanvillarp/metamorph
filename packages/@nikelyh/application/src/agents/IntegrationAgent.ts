@@ -247,16 +247,35 @@ const integrationProcessor = {
         log(
           producerId,
           planId,
-          "npm install failed in the shadow workspace. Continuing to build anyway.",
-          "warning",
+          "npm install failed in the shadow workspace. Halting build to avoid noisy compile errors.",
+          "error",
         );
-      } else {
-        log(
+
+        if (lastRound) {
+          await failMigration(
+            producerId,
+            planId,
+            `npm install failed in the shadow workspace after ${MAX_INTEGRATION_ROUNDS} integration rounds. The migration is not successful.`,
+          );
+          return;
+        }
+
+        const path = await import('node:path');
+        const pkgPath = path.join(shadowPath, 'package.json');
+        await requeueBrokenFiles(
           producerId,
           planId,
-          "npm install finished. Next: npm run build in the shadow workspace.",
+          [pkgPath],
+          [`npm install failed in shadow workspace:\n${install.output.slice(0, 2500)}`],
         );
+        return;
       }
+
+      log(
+        producerId,
+        planId,
+        "npm install finished. Next: npm run build in the shadow workspace.",
+      );
 
       let lastBuildBeat = Date.now();
       let build = await runInShadowWorkspace(
