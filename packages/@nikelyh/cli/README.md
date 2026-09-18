@@ -16,16 +16,17 @@
 
 Metamorph is a CLI tool powered by [Mozaik](https://github.com/jigjoy-ai/mozaik) that automates complex architectural shifts and framework migrations in your codebase. Instead of doing it manually, Metamorph spawns a swarm of specialized AI agents that safely refactor your code in an isolated "Shadow Workspace".
 
-📚 **[Read the Full Documentation](https://metamorph.nikelyh.tech/docs)**
+**[Read the Full Documentation](https://metamorph.nikelyh.tech/docs)** | **[System Architecture](https://github.com/yohanvillarp/metamorph/blob/main/docs/architecture.md)**
 
-## 🚀 Features
+## Features
 
-- **Multi-Agent Concurrency**: Utilizes Mapper, Worker, Reviewer, and PackageManager agents to migrate code.
-- **Zero Risk**: All migrations happen in a `.metamorph/shadow` workspace. Your original code is completely untouched until you explicitly approve and integrate the changes.
-- **Visual Dashboard**: Watch your agents work in real-time through the built-in local dashboard UI.
-- **Extensive Framework Support**: Easily migrate between popular frameworks automatically.
+- **Multi-Agent Concurrency** -- Utilizes Mapper, Worker, Reviewer, Integration, and Coordinator agents to migrate code in parallel.
+- **Zero Risk** -- All migrations happen in a `.metamorph/shadow` workspace. Your original code is completely untouched until you explicitly approve and apply the changes.
+- **Visual Dashboard** -- Watch your agents work in real-time through the built-in local dashboard UI.
+- **Shadow Build Verification** -- Every migration is validated with `npm install` and `npm run build` inside the shadow workspace before completion.
+- **Extensive Framework Support** -- Easily migrate between popular frontend and backend frameworks.
 
-## 📦 Installation
+## Installation
 
 Install Metamorph globally via NPM:
 
@@ -33,66 +34,90 @@ Install Metamorph globally via NPM:
 npm install -g @nikelyh/metamorph
 ```
 
-## 🛠️ Typical Workflow
+### Prerequisites
 
-You can run the entire migration lifecycle using just your terminal. 
+- Node.js >= 20
+- An LLM provider API key (OpenAI, Anthropic, or compatible). Set it as an environment variable:
+  ```bash
+  export OPENAI_API_KEY=sk-...
+  ```
 
-### 1. Help & Options
-To see all available commands and options at any time, run:
-```bash
-metamorph --help
-```
+## Typical Workflow
 
-### 2. Start a Migration
+### 1. Start a Migration
+
 Navigate to the root of the project you want to migrate and run:
+
 ```bash
 metamorph run
 ```
-Metamorph will automatically detect your current stack (e.g. Express, React) and prompt you to select the target framework. Alternatively, you can bypass the interactive prompt by passing the source explicitly:
+
+Metamorph automatically detects your current stack (e.g., Express, React) and prompts you to select the target framework. You can bypass the interactive prompt by passing the source explicitly:
+
 ```bash
 metamorph run --from express
 ```
 
-### 3. Monitor the Agents (Dashboard UI)
-Once a migration is running, the AI swarm begins working in the background. To see their real-time progress, open a **new terminal tab** in the same folder and run:
+### 2. Monitor the Agents (Dashboard UI)
+
+Once a migration is running, the AI swarm begins working in the background. To see their real-time progress, open a new terminal in the same directory and run:
+
 ```bash
 metamorph ui
 ```
-This will start the internal dashboard server and open a Neo-Brutalist interface in your default browser. You can specify a port with `--port 8080`.
 
-### 4. Review and Apply
-After the AI finishes the migration in the isolated Shadow Workspace, you will receive a `runId`. You can apply the completed migration to your actual repository (which automatically creates a new git branch for safety):
+This starts the internal dashboard server and opens a monitoring interface in your default browser. You can specify a port with `--port 8080`.
+
+### 3. Review and Apply
+
+After the AI finishes the migration in the isolated Shadow Workspace, you will receive a `runId`. Apply the completed migration to your actual repository (which automatically creates a new Git branch for safety):
+
 ```bash
 metamorph apply <runId> .
 ```
 
-### 5. Managing Migrations
-If you want to discard a run without applying it:
+### 4. Managing Migrations
+
+Discard a run without applying it:
+
 ```bash
 metamorph rollback <runId>
 ```
-To see a history of all migrations:
+
+View migration history:
+
 ```bash
 metamorph list
 ```
-To clear the local database and reset all events:
+
+Clear the local database and reset all events:
+
 ```bash
 metamorph reset
 ```
 
 ### Utility Commands
-To test the technology detection on your repository without starting a migration:
+
+Test the technology detection on your repository without starting a migration:
+
 ```bash
 metamorph detect .
 ```
 
-## 🔄 Supported Migrations
+View all available commands and options:
 
-As Metamorph's AI capabilities are constantly expanding, the list of supported architectural shifts is updated frequently.
+```bash
+metamorph --help
+```
 
-To see the complete, up-to-date list of all supported frontend and backend framework migrations, please visit our official documentation:
+## Supported Migrations
 
-👉 **[View Supported Migrations](https://metamorph.nikelyh.tech/docs/migrations)**
+The list of supported architectural shifts is updated frequently as new migration catalogs are added.
+
+See the complete, up-to-date list of all supported frontend and backend framework migrations in the official documentation:
+
+**[View Supported Migrations](https://metamorph.nikelyh.tech/docs/migrations)**
 
 ---
-*Built with ❤️ using Mozaik.*
+
+*Built with [Mozaik](https://github.com/jigjoy-ai/mozaik).*
