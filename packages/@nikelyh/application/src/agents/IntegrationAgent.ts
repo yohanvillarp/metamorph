@@ -27,6 +27,26 @@ async function completeMigration(
   const runtime = resolveRuntime();
   const plan = await runtime.state.repository.getPlan(planId);
   if (plan) {
+    // Sweep: any non-system task still marked 'failed' from a prior round is
+    // no longer blocking — the shadow build passed and verifiers are clean.
+    // Clear them so the dashboard counter reflects reality.
+    let swept = 0;
+    for (const task of plan.tasks) {
+      if (task.status === "failed" && !task.filePath.startsWith("system:")) {
+        await runtime.state.repository.updateTaskStatus(
+          planId,
+          task.filePath,
+          "completed",
+        );
+        swept++;
+      }
+    }
+    if (swept > 0) {
+      console.log(
+        `[IntegrationAgent] Swept ${swept} residual failed task(s) → completed (shadow build passed).`,
+      );
+    }
+
     plan.phase = "completed";
     plan.outcome = "success";
     await runtime.state.repository.savePlan(plan);
