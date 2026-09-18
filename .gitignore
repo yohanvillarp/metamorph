@@ -1,4 +1,3 @@
-/docs
 
 # Dependencias (incluyendo las de los workspaces)
 node_modules/
@@ -10,6 +9,9 @@ build/
 .next/
 out/
 coverage/
+*.tsbuildinfo
+tsup.config.js
+tsup.config.d.ts
 
 # Bases de datos y archivos de Shadow Workspace
 .metamorph/
@@ -19,6 +21,8 @@ coverage/
 
 # Variables de entorno y secretos
 .env
+.env.*
+!.env.example
 .env.*.local
 .env.local
 
@@ -32,4 +36,10 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 .agents/
-scratch/playgrounds/
+scratch/
+
+# Personalizado
+AGENTS.md
+GEMINI.md
+plans/
+local/

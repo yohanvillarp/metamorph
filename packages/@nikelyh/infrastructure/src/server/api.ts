@@ -1,5 +1,6 @@
-import { StateRepository, findMigrationCatalogEntry } from '@nikelyh/domain';
+import { StateRepository, resolveMigrationCatalog } from '@nikelyh/domain';
 import { MigrationIntegrator } from '../workspace/MigrationIntegrator.js';
+import type { Request, Response } from 'express';
 
 /**
  * Creates and configures the Express REST API server.
@@ -23,28 +24,36 @@ export async function createApiServer(
 
   // ─── READ ENDPOINTS (existing) ───────────────────────────
 
-  app.get('/api/plans', async (_req: any, res: any) => {
+  app.get('/api/plans', async (_req: Request, res: Response) => {
     try {
       const plans = await store.getAllPlans();
       res.json(plans);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: String(error) });
+      }
     }
   });
 
-  app.get('/api/events', async (_req: any, res: any) => {
+  app.get('/api/events', async (_req: Request, res: Response) => {
     try {
       const events = await store.getEvents();
       res.json(events);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: String(error) });
+      }
     }
   });
 
-  app.get('/api/browse', async (req: any, res: any) => {
+  app.get('/api/browse', async (req: Request, res: Response) => {
     try {
       const { readdirSync, statSync } = await import('node:fs');
-      const { resolve, join, basename } = await import('node:path');
+      const { resolve, join } = await import('node:path');
       const targetPath = req.query.path
         ? resolve(String(req.query.path))
         : resolve('.');
@@ -76,12 +85,16 @@ export async function createApiServer(
         parent: resolve(targetPath, '..'),
         entries,
       });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: String(error) });
+      }
     }
   });
 
-  app.get('/api/detect', async (req: any, res: any) => {
+  app.get('/api/detect', async (req: Request, res: Response) => {
     try {
       const { detectTechnologies } = await import('../detector/TechDetector.js');
       const targetPath = req.query.path ? String(req.query.path) : '.';
@@ -91,28 +104,34 @@ export async function createApiServer(
         detected,
         primary: detected.length > 0 ? detected[0].framework : null
       });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: String(error) });
+      }
     }
   });
 
   // ─── CONTROL ENDPOINTS (new) ─────────────────────────────
 
   if (migrationRunner) {
-    app.post('/api/migrations/start', async (req: any, res: any) => {
+    app.post('/api/migrations/start', async (req: Request, res: Response): Promise<void> => {
       try {
         const { targetPath, from, to } = req.body;
         if (!targetPath || !from || !to) {
-          return res.status(400).json({
+          res.status(400).json({
             error: 'Missing required fields: targetPath, from, to',
           });
+          return;
         }
         
-        const catalogEntry = findMigrationCatalogEntry(from, to);
+        const catalogEntry = resolveMigrationCatalog(from, to);
         if (!catalogEntry) {
-          return res.status(400).json({
+          res.status(400).json({
             error: `Unsupported migration profile: ${from} -> ${to}. Please check the supported catalog.`,
           });
+          return;
         }
         
         const result = await migrationRunner.startMigration({
@@ -121,49 +140,110 @@ export async function createApiServer(
           to,
         });
         res.json({ ok: true, ...result });
-      } catch (error: any) {
-        res.status(500).json({ error: error.message });
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: String(error) });
+        }
       }
     });
 
-    app.post('/api/migrations/apply', async (req: any, res: any) => {
+    app.post('/api/migrations/apply', async (req: Request, res: Response): Promise<void> => {
       try {
         const { runId, targetPath } = req.body;
         if (!runId || !targetPath) {
-          return res.status(400).json({
+          res.status(400).json({
             error: 'Missing required fields: runId, targetPath',
           });
+          return;
         }
+
+        const plans = await store.getAllPlans();
+        const plan = plans.find((item) => item.runId === runId);
+        if (!plan) {
+          res.status(404).json({ error: `Plan for run "${runId}" not found in database.` });
+          return;
+        }
+
+        if (plan.phase !== 'completed' || plan.outcome !== 'success') {
+          res.status(400).json({
+            error: `Cannot apply migration: plan is not completed successfully (phase: "${plan.phase}", outcome: "${plan.outcome || 'none'}"). Only successful migrations can be applied.`,
+          });
+          return;
+        }
+
+        if (plan.appliedAt) {
+          res.status(400).json({
+            error: `Migration for run "${runId}" has already been applied at ${new Date(plan.appliedAt).toISOString()} to branch ${plan.appliedBranch || 'unknown'}.`,
+          });
+          return;
+        }
+
         const integrator = new MigrationIntegrator(migrationRunner.workspace);
-        const message = await integrator.applyMigration(runId, targetPath);
-        res.json({ ok: true, message });
-      } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        const result = await integrator.applyMigration(runId, targetPath);
+        plan.appliedAt = new Date();
+        plan.appliedBranch = result.branch;
+        await store.savePlan(plan);
+        await store.logEvent('migration.applied', { runId, branch: result.branch, targetPath });
+        res.json({ ok: true, ...result });
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: String(error) });
+        }
       }
     });
 
-    app.post('/api/migrations/rollback', async (req: any, res: any) => {
+    app.post('/api/migrations/rollback', async (req: Request, res: Response): Promise<void> => {
       try {
         const { runId } = req.body;
         if (!runId) {
-          return res.status(400).json({
+          res.status(400).json({
             error: 'Missing required field: runId',
           });
+          return;
         }
         await migrationRunner.rollbackMigration(runId);
         res.json({ ok: true, message: `Rolled back run: ${runId}` });
-      } catch (error: any) {
-        res.status(500).json({ error: error.message });
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: String(error) });
+        }
       }
     });
 
-    app.post('/api/migrations/reset', async (_req: any, res: any) => {
+    app.post('/api/migrations/reset', async (_req: Request, res: Response) => {
       try {
         await store.reset();
         res.json({ ok: true, message: 'Migration state reset successfully' });
-      } catch (error: any) {
-        res.status(500).json({ error: error.message });
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          res.status(500).json({ error: error.message });
+        } else {
+          res.status(500).json({ error: String(error) });
+        }
       }
+    });
+  }
+
+  // ─── STATIC SPA SERVING ──────────────────────────────────
+  const path = await import('node:path');
+  const fs = await import('node:fs');
+  
+  let publicDir = path.join(import.meta.dirname, 'public');
+  if (!fs.existsSync(publicDir)) {
+    publicDir = path.join(import.meta.dirname, '../public');
+  }
+
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir));
+    // Catch-all route for SPA (Express v5 requires RegExp instead of string wildcards)
+    app.get(/^(.*)$/, (_req: Request, res: Response) => {
+      res.sendFile(path.join(publicDir, 'index.html'));
     });
   }
 

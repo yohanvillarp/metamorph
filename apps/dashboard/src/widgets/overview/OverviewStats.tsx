@@ -6,9 +6,11 @@ interface OverviewStatsProps {
   completedTasks: number;
   failedTasks: number;
   chartData: any[];
+  isIntegrating?: boolean;
 }
 
-export const OverviewStats = ({ pendingTasks, inProgressTasks, completedTasks, failedTasks, chartData }: OverviewStatsProps) => {
+export const OverviewStats = ({ pendingTasks, inProgressTasks, completedTasks, failedTasks, chartData, isIntegrating }: OverviewStatsProps) => {
+  const busyFiles = inProgressTasks > 0;
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in zoom-in-95 duration-200">
       {/* STATS */}
@@ -19,7 +21,14 @@ export const OverviewStats = ({ pendingTasks, inProgressTasks, completedTasks, f
         </div>
         <div className="neo-card bg-blue-300 text-black">
           <h3 className="neo-title border-black">In Progress</h3>
-          <p className="text-5xl font-black animate-pulse">{inProgressTasks}</p>
+          {isIntegrating && !busyFiles ? (
+            <>
+              <p className="text-2xl font-black uppercase tracking-widest animate-pulse leading-tight">Installing</p>
+              <p className="text-xs font-bold mt-1">File queue is idle. IntegrationAgent is running npm install / build.</p>
+            </>
+          ) : (
+            <p className={`text-5xl font-black ${busyFiles ? 'animate-pulse' : ''}`}>{inProgressTasks}</p>
+          )}
         </div>
         <div className="neo-card bg-green-400 text-black">
           <h3 className="neo-title border-black">Completed</h3>
@@ -36,16 +45,16 @@ export const OverviewStats = ({ pendingTasks, inProgressTasks, completedTasks, f
         <h3 className="neo-title mb-6">Agent Activity Volume</h3>
         <div className="flex-1 min-h-0 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-              <XAxis dataKey="name" stroke="var(--neo-text)" tick={{ fontFamily: 'JetBrains Mono', fontWeight: 'bold' }} />
-              <YAxis stroke="var(--neo-text)" tick={{ fontFamily: 'JetBrains Mono', fontWeight: 'bold' }} />
+            <BarChart data={chartData} margin={{ top: 20, right: 16, left: 0, bottom: 8 }}>
+              <XAxis dataKey="name" interval={0} stroke="var(--neo-text)" tick={{ fontFamily: 'JetBrains Mono', fontWeight: 'bold', fontSize: 11 }} />
+              <YAxis allowDecimals={false} stroke="var(--neo-text)" tick={{ fontFamily: 'JetBrains Mono', fontWeight: 'bold' }} />
               <Tooltip 
                 contentStyle={{ backgroundColor: 'var(--neo-surface)', border: '2px solid var(--neo-border)', boxShadow: '4px 4px 0px 0px var(--neo-shadow)', borderRadius: '0', fontFamily: 'JetBrains Mono' }}
                 cursor={{ fill: 'var(--neo-text)', opacity: 0.1 }}
               />
-              <Bar dataKey="events" stroke="var(--neo-border)" strokeWidth={2}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+              <Bar dataKey="events" stroke="var(--neo-border)" strokeWidth={2} isAnimationActive={false}>
+                {chartData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} />
                 ))}
               </Bar>
             </BarChart>

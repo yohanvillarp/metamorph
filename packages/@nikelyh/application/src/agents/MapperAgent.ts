@@ -45,7 +45,10 @@ const mapFilesProcessor = {
         const fullPath = path.join(dir, file);
         if (fs.statSync(fullPath).isDirectory()) {
           scanDir(fullPath);
-        } else if (file.endsWith('.ts') || file.endsWith('.js')) {
+        } else if (
+          /\.(ts|js|tsx|jsx|vue|svelte)$/.test(file)
+          || (file.endsWith('.html') && file !== 'index.html')
+        ) {
           filesToMigrate.push(fullPath);
         }
       }
@@ -59,7 +62,7 @@ const mapFilesProcessor = {
       console.log(`[MapperAgent] Discovered file: ${discoveredFile}`);
       
       // Register in the database as pending immediately so the UI knows the total tasks
-      await repository.updateTaskStatus(payload.planId, discoveredFile, 'pending' as any);
+      await repository.updateTaskStatus(payload.planId, discoveredFile, 'pending');
 
       // Fire the event to the Mozaik bus so the WorkerAgent wakes up
       sendEvent(

@@ -1,6 +1,7 @@
 {
   "name": "metamorph-monorepo",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "workspaces": [
     "apps/*",
@@ -11,9 +12,13 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "test": "turbo run test"
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "changeset": "changeset",
+    "release": "turbo run build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.2",
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",
     "@types/express": "^5.0.6",

@@ -1,78 +1,66 @@
-# React + TypeScript + Vite
+# Metamorph Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Real-time monitoring interface for the Metamorph agent swarm. Built with React 18, Vite, and Tailwind CSS following [Feature-Sliced Design](https://feature-sliced.design/) conventions.
 
-Currently, two official plugins are available:
+## Purpose
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The Dashboard connects to the local Express REST API (served by `@nikelyh/infrastructure`) and provides live visibility into:
 
-## React Compiler
+- **Overview Stats** -- Pending, in-progress, completed, and failed task counters with a time-series chart.
+- **Swarm View** -- Per-file pipeline visualization showing each file's progression through queued, working, reviewing, and done stages.
+- **Migration Queue** -- Filterable task list with status badges and error details.
+- **Event Log** -- Reverse-chronological stream of all semantic events emitted by the swarm.
+- **Migration Form** -- Start new migration runs with source/target framework selection.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+## Architecture
 
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```text
+src/
+    app/            Global setup, providers, router
+    pages/          Route-level page components (DashboardPage)
+    widgets/        Self-contained UI blocks (OverviewStats, LiveSwarm, MigrationQueue, EventLog)
+    entities/       UI-specific domain types (MigrationPlan, Task)
+    shared/         Design tokens, API client, reusable hooks
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+### Layer Dependency Rules (FSD)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+`shared` --> `entities` --> `features` --> `widgets` --> `pages` --> `app`
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Cross-imports within the same layer are not permitted.
 
+## Development
+
+The Dashboard is not run independently. It is started through the CLI:
+
+```bash
+metamorph ui
 ```
+
+This launches the Express API server on port 9876 and serves the built Dashboard assets.
+
+For development with hot-reload:
+
+```bash
+cd apps/dashboard
+npm run dev
+```
+
+The Vite dev server starts on `http://localhost:5173` and proxies API calls to `http://localhost:9876`.
+
+## Build
+
+```bash
+npm run build
+```
+
+The production bundle is output to `dist/` and automatically copied into the CLI package (`packages/@nikelyh/cli/dist/public`) during the monorepo build via Turborepo.
+
+## Technology
+
+| Dependency | Version | Purpose |
+|---|---|---|
+| React | 18 | UI rendering |
+| Vite | 8 | Build tooling and dev server |
+| Tailwind CSS | 4 | Utility-first styling |
+| Recharts | 2 | Time-series chart in Overview |

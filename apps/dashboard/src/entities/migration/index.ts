@@ -2,8 +2,8 @@ export const FRAMEWORKS = [
   { value: 'express',   label: 'Express',    group: 'backend',  icon: '/icons/expressjs.svg' },
   { value: 'fastify',   label: 'Fastify',    group: 'backend',  icon: '/icons/fastify.svg' },
   { value: 'nestjs',    label: 'NestJS',     group: 'backend',  icon: '/icons/nestjs.svg' },
-  { value: 'koa',       label: 'Koa',        group: 'backend',  icon: '/icons/koa.svg' },
-  { value: 'hapi',      label: 'Hapi',       group: 'backend',  icon: '/icons/hapi.svg' },
+  // { value: 'koa',       label: 'Koa',        group: 'backend',  icon: '/icons/koa.svg' },
+  // { value: 'hapi',      label: 'Hapi',       group: 'backend',  icon: '/icons/hapi.svg' },
   { value: 'next',      label: 'Next.js',    group: 'frontend', icon: '/icons/nextjs.svg' },
   { value: 'react',     label: 'React',      group: 'frontend', icon: '/icons/react.svg' },
   { value: 'vue',       label: 'Vue',        group: 'frontend', icon: '/icons/vue.svg' },
@@ -25,6 +25,10 @@ export interface MigrationPlan {
   sourceFramework: string;
   targetFramework: string;
   targetPath: string;
+  phase?: 'files' | 'integration' | 'completed' | 'failed';
+  outcome?: 'success' | 'failed';
+  appliedAt?: string;
+  appliedBranch?: string;
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
   totalFiles: number;
   migratedFiles: number;

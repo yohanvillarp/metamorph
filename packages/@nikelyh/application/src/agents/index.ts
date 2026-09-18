@@ -1,6 +1,12 @@
 /**
  * Core domain logic for agents.
  * 
+ * export * from './MapperAgent';
+export * from './WorkerAgent';
+export * from './ReviewerAgent';
+export * from './PackageManagerAgent';
+export * from './ReporterAgent';
+export * from './IntegrationAgent';
  * Agentes Mozaik que trabajarán de forma paralela en la migración.
  * Cada agente se suscribirá a eventos relevantes en el bus.
  */

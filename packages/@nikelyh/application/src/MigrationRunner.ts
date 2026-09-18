@@ -3,7 +3,7 @@ import { StateRepository, MigrationPlan, SemanticEventName, SemanticEventPayload
 import { ShadowWorkspace } from '@nikelyh/infrastructure';
 import { Tool } from '@mozaik-ai/core';
 import { bootstrapMetamorph } from './index';
-import { sendEvent, join } from './runtime';
+import { sendEvent, resolveRuntime } from './runtime';
 
 export interface MigrationRequest {
   targetPath: string;
@@ -25,7 +25,7 @@ export interface MigrationResult {
 export class MigrationRunner {
   private store: StateRepository;
   private tools: Tool[];
-  private workspace: ShadowWorkspace;
+  public readonly workspace: ShadowWorkspace;
   private initialized = false;
 
   constructor(store: StateRepository, tools: Tool[]) {
@@ -53,10 +53,11 @@ export class MigrationRunner {
    */
   async startMigration(request: MigrationRequest): Promise<MigrationResult> {
     this.ensureInitialized();
-    await this.store.reset();
     
     // Clean up old shadow workspaces to save disk space
-    this.workspace.cleanupOldRuns(3);
+    const existing = await this.store.getAllPlans();
+    const protectedRunIds = existing.filter((p) => p.appliedAt).map((p) => p.runId);
+    this.workspace.cleanupOldRuns(3, protectedRunIds);
 
     const runId = `run_${Date.now()}`;
     const shadowPath = this.workspace.cloneDirectory(request.targetPath, runId);
@@ -67,20 +68,23 @@ export class MigrationRunner {
       runId: runId,
       profile: { source: request.from, target: request.to },
       targetPath: request.targetPath,
-      tasks: [],
+      phase: 'files',
+      tasks: [
+        { filePath: 'system:package_manager', status: 'pending' }
+      ],
       createdAt: new Date(),
     };
     await this.store.savePlan(plan);
 
-    // Create a "Human" participant to dispatch the initial event
-    const { createHuman } = await import('@mozaik-ai/core');
-    const human = createHuman({ name: 'System', capabilities: [], handlers: [] });
-    join(human);
+    const dispatcherId = resolveRuntime().state.dispatcherId;
+    if (!dispatcherId) {
+      throw new Error('Mozaik System participant is not joined.');
+    }
 
     sendEvent(
       {
         type: SemanticEventName.MIGRATION_STARTED,
-        producerId: human.getId(),
+        producerId: dispatcherId,
         occurredAt: new Date(),
         payload: {
           planId,
@@ -88,7 +92,7 @@ export class MigrationRunner {
           shadowWorkspacePath: shadowPath,
         } as SemanticEventPayloads.MigrationStarted,
       },
-      human.getId()
+      dispatcherId
     );
 
     return { planId, shadowPath, runId };

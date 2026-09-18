@@ -1,10 +1,11 @@
 {
   "name": "@nikelyh/infrastructure",
+  "private": true,
   "version": "1.0.0",
   "main": "src/index.ts",
   "type": "module",
   "dependencies": {
-    "@mozaik-ai/core": "^4.0.5",
+    "@mozaik-ai/core": "^4.0.6",
     "@nikelyh/domain": "*",
     "cors": "^2.8.6",
     "express": "^5.2.1",
@@ -15,9 +16,11 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/fs-extra": "^11.0.4",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "tsx": "^4.23.13"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/**/*.test.ts"
   }
 }

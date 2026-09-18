@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import {
   Agent,
   createAgent,
@@ -6,12 +5,15 @@ import {
   SituationSpecification,
   Tool
 } from '@mozaik-ai/core';
-import { SemanticEventName, SemanticEventPayloads, findMigrationCatalogEntry } from '@nikelyh/domain';
+import { resolveMigrationCatalog, formatCatalogRules, SemanticEventName, SemanticEventPayloads } from '@nikelyh/domain';
+import * as fs from 'fs';
+import { collectFileHints } from '../migration/registry';
 import { join, leave, resolveRuntime, runLoop, sendEvent } from '../runtime';
 import { buildFileTree } from '../utils/FileTreeBuilder';
+import { buildNeighborContext } from '../utils/NeighborContext';
+import { MISSING_AFTER_WORKER, workerCompletionKind } from '../utils/workerCompletion';
 
 // Track retry counts per file to prevent infinite reject-repair loops
-const retryCountMap = new Map<string, number>();
 const MAX_RETRIES = 2;
 
 class ConcurrencyQueue {
@@ -44,7 +46,7 @@ class ConcurrencyQueue {
   }
 }
 
-const workerQueue = new ConcurrencyQueue(2); // Maximum 2 concurrent workers
+const workerQueue = new ConcurrencyQueue(3); // Maximum 3 concurrent workers
 
 class WhenFileDiscovered extends SituationSpecification {
   isSatisfiedBy({ event }: SituationContext): boolean {
@@ -82,38 +84,61 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
     const runtime = resolveRuntime();
     const repository = runtime.state.repository;
 
-    console.log(`[WorkerAgent] Marking file as 'in_progress' in database...`);
     await repository.updateTaskStatus(planId, filePath, 'in_progress');
 
     const { createAgent: createMozaikAgent } = await import('@mozaik-ai/core');
+    const { findShadowRoot } = await import('../utils/NextMigrationHints');
+    const shadowRoot = findShadowRoot(filePath);
+    let workerTools = participant.getTools();
+    if (shadowRoot) {
+      const { createShadowTools } = await import('@nikelyh/infrastructure');
+      workerTools = createShadowTools(shadowRoot);
+    }
     
     const tempAgent = createMozaikAgent({
       name: `Worker-${Date.now()}-${Math.floor(Math.random()*1000)}`,
       capabilities: ['code_refactoring', 'inference'],
-      instruction: 'You are the Programmer Worker. Your job is to refactor specific files based on the migration profile using your file reading and writing tools. When you are done modifying the file, simply finish your response.',
-      tools: participant.getTools(),
+      instruction: 'You are a staff engineer migrating a real codebase. Deduce from files on disk: read the target and every local module it imports before writing. Never invent callback prop names or re-implement a screen you could import. Prefer evidence over catalog examples.',
+      tools: workerTools,
       handlers: [
       {
         specification: new WhenInferenceCompleted(),
         processor: {
-          async apply({ event: completionEvent, participant: tempParticipant }) {
-            console.log(`[WorkerAgent:${tempParticipant.getId()}] Inference completed. Emitting FILE_MIGRATED.`);
-            
-            // Read the actual file content from disk (the Worker's tools already wrote it)
-            let fileContent = 'No content available';
+          async apply({ participant: tempParticipant }) {
+            if (isDone) {
+              return;
+            }
+
+            const exists = fs.existsSync(filePath);
+            if (workerCompletionKind(exists) === 'failed_missing') {
+              console.warn(`[WorkerAgent:${tempParticipant.getId()}] File not found on disk after inference: ${filePath}`);
+              await repository.updateTaskStatus(planId, filePath, 'failed', MISSING_AFTER_WORKER);
+              sendEvent(
+                {
+                  type: SemanticEventName.FILE_FAILED,
+                  producerId: tempParticipant.getId(),
+                  occurredAt: new Date(),
+                  payload: { planId, filePath, reason: MISSING_AFTER_WORKER },
+                },
+                tempParticipant.getId()
+              );
+              leave(tempParticipant);
+              resolve();
+              return;
+            }
+
+            let fileContent = '';
             try {
-              if (fs.existsSync(filePath)) {
-                fileContent = fs.readFileSync(filePath, 'utf-8');
-                console.log(`[WorkerAgent:${tempParticipant.getId()}] Read ${fileContent.length} chars from ${filePath}`);
-              } else {
-                console.warn(`[WorkerAgent:${tempParticipant.getId()}] File not found on disk: ${filePath}`);
-              }
+              fileContent = fs.readFileSync(filePath, 'utf-8');
+              console.log(`[WorkerAgent:${tempParticipant.getId()}] Read ${fileContent.length} chars from ${filePath}`);
             } catch (e) {
               console.error(`[WorkerAgent:${tempParticipant.getId()}] Error reading file:`, e);
             }
-            
-            await repository.updateTaskStatus(planId, filePath, 'completed' as any);
-            
+
+            console.log(`[WorkerAgent:${tempParticipant.getId()}] Inference completed. Emitting FILE_MIGRATED.`);
+            // Stay in_progress until the Reviewer approves.
+            await repository.updateTaskStatus(planId, filePath, 'in_progress');
+
             sendEvent(
               {
                 type: SemanticEventName.FILE_MIGRATED,
@@ -122,7 +147,7 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
                 payload: {
                   planId: planId,
                   filePath: filePath,
-                  diff: fileContent, 
+                  diff: fileContent,
                 } as SemanticEventPayloads.FileMigrated,
               },
               tempParticipant.getId()
@@ -150,16 +175,29 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
 
     setTimeout(async () => {
       if (!isDone) {
-        console.error(`[WorkerAgent:${tempAgent.getId()}] Inference timed out.`);
-        await repository.updateTaskStatus(planId, filePath, 'failed', 'Inference timed out');
+        console.error(`[WorkerAgent:${tempAgent.getId()}] Inference timed out after 120s.`);
+        await repository.updateTaskStatus(planId, filePath, 'failed', 'Inference timed out after 120s');
+        sendEvent({
+          type: SemanticEventName.FILE_FAILED,
+          producerId: tempAgent.getId(),
+          occurredAt: new Date(),
+          payload: { planId, filePath, reason: 'Inference timed out after 120s' },
+        }, tempAgent.getId());
         leave(tempAgent);
         resolve();
       }
-    }, 45000);
-  } catch (error: any) {
+    }, 120000);
+  } catch (error: unknown) {
     console.error(`[WorkerAgent:${tempAgent.getId()}] Sync error:`, error);
     if (!isDone) {
-      await repository.updateTaskStatus(planId, filePath, 'failed', error?.message || 'Sync error');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await repository.updateTaskStatus(planId, filePath, 'failed', errorMessage || 'Sync error');
+      sendEvent({
+        type: SemanticEventName.FILE_FAILED,
+        producerId: tempAgent.getId(),
+        occurredAt: new Date(),
+        payload: { planId, filePath, reason: errorMessage || 'Sync error' },
+      }, tempAgent.getId());
       leave(tempAgent);
       resolve();
     }
@@ -178,10 +216,10 @@ const workOnFileProcessor = {
     if (plan) {
       prompt += `Migration Profile: Transform from ${plan.profile.source} to ${plan.profile.target}.\n`;
       
-      const catalogEntry = findMigrationCatalogEntry(plan.profile.source, plan.profile.target);
+      const catalogEntry = resolveMigrationCatalog(plan.profile.source, plan.profile.target);
       if (catalogEntry) {
-        prompt += `\nStrict Architectural Rules for this Migration:\n`;
-        catalogEntry.architecturalRules.forEach(rule => prompt += `- ${rule}\n`);
+        prompt += `\nArchitectural rules (all → ${catalogEntry.layer} → frameworks → this pair):\n`;
+        prompt += `${formatCatalogRules(catalogEntry.ruleSections)}\n`;
         
         if (catalogEntry.examples && catalogEntry.examples.length > 0) {
           prompt += `\nReference Examples:\n`;
@@ -202,8 +240,19 @@ const workOnFileProcessor = {
         prompt += `\`\`\`text\n${projectTree}\n\`\`\`\n`;
         prompt += `Use this context to ensure your changes align with the overall project structure and other files.\n`;
       }
+      prompt += collectFileHints(
+        payload.filePath,
+        { source: plan.profile.source, target: plan.profile.target },
+        catalogEntry?.layer,
+      );
     }
-    prompt += `Please read the file using your tools, rewrite it according to the rules, and write it back.`;
+    prompt += buildNeighborContext(payload.filePath);
+    prompt += `\nYou are not a mechanical find-replace bot. Deduce the correct change from the evidence above and from tools (read_file, list_directory).
+Before writing:
+1. Read every local import you will call.
+2. Keep that module's public prop/export names exactly.
+3. If this is a router/bootstrap file, import an existing screen from the nearby paths — do not paste a new copy of its JSX.
+Then write the file(s). If structure must change, create/rename/delete accordingly.`;
 
     workerQueue.enqueue(async () => {
       await startWorkerLoop(payload.planId, payload.filePath, prompt, participant as Agent);
@@ -217,31 +266,46 @@ const fixRejectedFileProcessor = {
     
     // Check retry count
     const retryKey = `${payload.planId}:${payload.filePath}`;
-    const currentRetries = retryCountMap.get(retryKey) || 0;
+    const retries = resolveRuntime().state.retryCounts;
+    if (payload.source === 'integration') {
+      retries.delete(retryKey);
+    }
+    const currentRetries = retries.get(retryKey) || 0;
     
     if (currentRetries >= MAX_RETRIES) {
       console.warn(`[WorkerAgent] File ${payload.filePath} exceeded max retries (${MAX_RETRIES}). Marking as failed.`);
       const runtime = resolveRuntime();
       await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', `Exceeded max retries (${MAX_RETRIES})`);
-      retryCountMap.delete(retryKey);
+      retries.delete(retryKey);
+      sendEvent({
+        type: SemanticEventName.FILE_FAILED,
+        producerId: participant.getId(),
+        occurredAt: new Date(),
+        payload: { planId: payload.planId, filePath: payload.filePath, reason: `Exceeded max retries (${MAX_RETRIES})` },
+      }, participant.getId());
       return;
     }
     
-    retryCountMap.set(retryKey, currentRetries + 1);
+    retries.set(retryKey, currentRetries + 1);
     console.log(`[WorkerAgent] File REJECTED (attempt ${currentRetries + 1}/${MAX_RETRIES}), initiating repair loop: ${payload.filePath}`);
     
     const runtime = resolveRuntime();
     const plan = await runtime.state.repository.getPlan(payload.planId);
     let prompt = `You need to FIX the file at path: ${payload.filePath}\n`;
-    prompt += `Your previous migration was REJECTED by the Quality Assurance Reviewer.\n`;
+    if (payload.source === 'integration') {
+      prompt += `The Integration Agent rejected this file because the shadow workspace failed npm install / npm run build, or a catalog verifier flagged it.\n`;
+      prompt += `If the file does not exist yet, create it. If it is a router/bootstrap file, import existing screens — do not re-implement them or rename their callback props.\n`;
+    } else {
+      prompt += `Your previous migration was REJECTED by the Quality Assurance Reviewer.\n`;
+    }
     prompt += `Feedback/Errors:\n${payload.errors.join('\n')}\n\n`;
     if (plan) {
       prompt += `Migration Profile: Transform from ${plan.profile.source} to ${plan.profile.target}.\n`;
       
-      const catalogEntry = findMigrationCatalogEntry(plan.profile.source, plan.profile.target);
+      const catalogEntry = resolveMigrationCatalog(plan.profile.source, plan.profile.target);
       if (catalogEntry) {
-        prompt += `\nStrict Architectural Rules for this Migration:\n`;
-        catalogEntry.architecturalRules.forEach(rule => prompt += `- ${rule}\n`);
+        prompt += `\nArchitectural rules (all → ${catalogEntry.layer} → frameworks → this pair):\n`;
+        prompt += `${formatCatalogRules(catalogEntry.ruleSections)}\n`;
       }
       
       if (plan.tasks && plan.tasks.length > 0) {
@@ -251,8 +315,14 @@ const fixRejectedFileProcessor = {
         prompt += `\`\`\`text\n${projectTree}\n\`\`\`\n`;
         prompt += `Ensure you respect this overall project structure while fixing the issues.\n`;
       }
+      prompt += collectFileHints(
+        payload.filePath,
+        { source: plan.profile.source, target: plan.profile.target },
+        catalogEntry?.layer,
+      );
     }
-    prompt += `Please read the file, fix the issues mentioned, and write it back.`;
+    prompt += buildNeighborContext(payload.filePath);
+    prompt += `\nDeduce the fix from the errors and the disk evidence. Read imported modules (and list_directory if you need another screen). Do not guess APIs. Then write the corrected file(s). If the path does not exist, create it. Do not delete existing screens just to make a router file compile.`;
 
     workerQueue.enqueue(async () => {
       await startWorkerLoop(payload.planId, payload.filePath, prompt, participant as Agent);
@@ -261,13 +331,12 @@ const fixRejectedFileProcessor = {
 };
 
 const fatalMismatchProcessor = {
-  async apply({ event }: SituationContext) {
+  async apply({ event, participant }: SituationContext) {
     const payload = event.payload as SemanticEventPayloads.FileFatalMismatch;
     console.error(`[WorkerAgent] 🛑 FATAL MISMATCH received for ${payload.filePath}. Reason: ${payload.reason}`);
     
-    // Clean up retry count since we are aborting
     const retryKey = `${payload.planId}:${payload.filePath}`;
-    retryCountMap.delete(retryKey);
+    resolveRuntime().state.retryCounts.delete(retryKey);
 
     const runtime = resolveRuntime();
     await runtime.state.repository.updateTaskStatus(
@@ -276,6 +345,12 @@ const fatalMismatchProcessor = {
       'failed', 
       `Fatal Architectural Mismatch: ${payload.reason}`
     );
+    sendEvent({
+      type: SemanticEventName.FILE_FAILED,
+      producerId: participant.getId(),
+      occurredAt: new Date(),
+      payload: { planId: payload.planId, filePath: payload.filePath, reason: payload.reason },
+    }, participant.getId());
   },
 };
 
@@ -283,7 +358,7 @@ export function createWorkerAgent(tools: Tool[]): Agent {
   return createAgent({
     name: 'Worker',
     capabilities: ['code_refactoring', 'inference'],
-    instruction: 'You are the Programmer Worker.',
+    instruction: 'You are the Programmer Worker. You migrate code and adapt file structures.',
     tools: tools,
     handlers: [
       { specification: new WhenFileDiscovered(), processor: workOnFileProcessor },
