@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./assets/banner.jpg" alt="Metamorph Banner" width="100%" />
 
-  # Metamorph
+  # 🦋 Metamorph
   **The Multi-Agent Migration CLI**
 
   [![npm version](https://img.shields.io/npm/v/@nikelyh/metamorph.svg?style=flat-square&color=blue&logo=npm)](https://www.npmjs.com/package/@nikelyh/metamorph)
@@ -10,7 +10,8 @@
   <p align="center">
     Refactor and migrate your entire codebase with zero risk and zero downtime.<br/>
     Powered by an elite swarm of autonomous agents.<br/><br/>
-    📚 <b><a href="https://metamorph.nikelyh.tech/docs">Read the Full Documentation</a></b>
+    <b><a href="https://metamorph.nikelyh.tech/docs">Read the Full Documentation</a></b> |
+    <b><a href="./docs/architecture.md">System Architecture</a></b>
   </p>
 
   <p align="center">
@@ -25,23 +26,59 @@
 
 ---
 
-## ❯ Overview
+## Overview
 
 **Metamorph** is an advanced CLI tool designed to completely automate complex architectural shifts and framework migrations. Instead of relying on regular expressions or manual AST transformations, Metamorph orchestrates a swarm of specialized Agents (Mapper, Worker, Reviewer, and PackageManager) to semantically rewrite your code.
 
 Every migration occurs inside a safe, isolated **Shadow Workspace** (`.metamorph/shadow`). Your original codebase remains completely untouched until you review the swarm's work and explicitly choose to apply the changes via a new Git branch.
 
-## ❖ Monorepo Architecture
+## System Architecture
 
-This project is built as a highly scalable monorepo using [Turborepo](https://turbo.build/):
+Metamorph follows a strict hexagonal architecture with an event-driven agent swarm. For the complete technical reference, see **[docs/architecture.md](./docs/architecture.md)**.
 
-- `apps/dashboard`: A local React dashboard used to visualize and monitor the AI swarm in real-time.
-- `packages/@nikelyh/cli`: The command-line interface entry point distributed on NPM.
-- `packages/@nikelyh/domain`: Core entities, events, and abstract ports following Hexagonal Architecture principles.
-- `packages/@nikelyh/application`: Use cases and agent definitions (Mapper, Worker, Reviewer) powered by Mozaik.
-- `packages/@nikelyh/infrastructure`: Concrete implementations of ports (File system operations, SQLite database, technology detection, and the local Express server).
+```mermaid
+flowchart TB
+    subgraph Entry["User Entry Points"]
+        CLI["CLI"]
+        Dashboard["Dashboard"]
+    end
 
-## ⚡ Usage (For End Users)
+    subgraph Swarm["Agent Swarm (Mozaik v4)"]
+        Mapper["MapperAgent"] --> Worker["WorkerAgent (x3)"]
+        Worker --> Reviewer["ReviewerAgent"]
+        Reviewer -->|Approved| Coordinator["CoordinatorAgent"]
+        Reviewer -->|Rejected| Worker
+        Coordinator --> Integration["IntegrationAgent"]
+        Integration -->|Build fails| Worker
+        Integration -->|Build passes| Reporter["ReporterAgent"]
+    end
+
+    subgraph IO["Infrastructure"]
+        Shadow[".metamorph/shadow"]
+        DB["SQLite"]
+        LLM["LLM Provider"]
+    end
+
+    CLI --> Swarm
+    Dashboard -->|REST API| DB
+    Worker --> LLM
+    Integration --> Shadow
+    Swarm --> DB
+```
+
+### Monorepo Structure
+
+Built as a scalable monorepo using [Turborepo](https://turbo.build/):
+
+| Package | Layer | Responsibility |
+|---|---|---|
+| `packages/@nikelyh/domain` | Domain | Entities, events, ports (zero I/O) |
+| `packages/@nikelyh/application` | Application | Agent definitions, migration orchestration |
+| `packages/@nikelyh/infrastructure` | Infrastructure | SQLite, file system, Express API, ts-morph |
+| `packages/@nikelyh/cli` | Driving Adapter | Commander-based CLI entry point |
+| `apps/dashboard` | Driving Adapter | React 18 real-time monitoring UI |
+
+## Usage
 
 If you just want to use Metamorph to migrate a project, simply install it globally via NPM:
 
@@ -68,15 +105,15 @@ metamorph ui
 - `metamorph detect [path]`: Detects frameworks and libraries in the current project.
 - `metamorph reset`: Clears all migration history and events from the local database.
 
-## 🔄 Supported Migrations
+## Supported Migrations
 
-As Metamorph's AI capabilities are constantly expanding, the list of supported architectural shifts is updated frequently.
+The list of supported architectural shifts is updated frequently as new migration catalogs are added.
 
-To see the complete, up-to-date list of all supported frontend and backend framework migrations, please visit our official documentation:
+See the complete, up-to-date list of all supported frontend and backend framework migrations in the official documentation:
 
-👉 **[View Supported Migrations](https://metamorph.nikelyh.tech/docs/migrations)**
+**[View Supported Migrations](https://metamorph.nikelyh.tech/docs/migrations)**
 
-## ⚙ Local Development
+## Local Development
 
 Want to contribute or modify Metamorph? Follow these steps to run the monorepo locally.
 
@@ -117,7 +154,7 @@ npm run dev
 ```
 *(Alternatively, navigate to `packages/@nikelyh/cli` and run `npm run dev`)*.
 
-## ⬡ Contributing
+## Contributing
 
 We welcome contributions! If you'd like to add support for a new framework migration (e.g., SvelteKit to Nuxt, Python Django to FastAPI), please open an issue first to discuss the architecture.
 
