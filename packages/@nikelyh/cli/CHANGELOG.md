@@ -1,5 +1,14 @@
 # @nikelyh/metamorph
 
+## 2.1.1
+
+### Patch Changes
+
+- Fix stale failed tasks counter sweep in IntegrationAgent when shadow build passes.
+- Add deterministic regression test harness for Next.js App Router transformations.
+- Add Coordinator watchdog timeout handling.
+- Expand technical architecture documentation with comprehensive Mermaid diagrams.
+
 ## 2.1.0
 
 ### Minor Changes
