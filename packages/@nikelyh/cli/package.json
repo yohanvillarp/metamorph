@@ -1,6 +1,6 @@
 {
   "name": "@nikelyh/metamorph",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Autonomous multi-agent migration and refactoring engine powered by Mozaik v4",
   "license": "GPL-3.0-or-later",
   "repository": {
