@@ -32,6 +32,7 @@ function fallbackReport(params: {
   tasks: Array<{ filePath: string; status: string; error?: string }>;
   notes: ReportNote[];
   startedAt: string;
+  packageManager?: string;
 }): string {
   const completed = params.tasks.filter((t) => t.status === 'completed');
   const failed = params.tasks.filter((t) => t.status === 'failed');
@@ -44,11 +45,14 @@ function fallbackReport(params: {
     .join('\n');
 
   const riskLines = rejected.slice(0, 12).map((n) => `- \`${n.filePath}\`: ${n.detail || n.outcome}`).join('\n');
+  const pm = params.packageManager || 'npm';
+  const devCmd = pm === 'yarn' ? 'yarn dev' : `${pm} run dev`;
+  const buildCmd = pm === 'yarn' ? 'yarn build' : `${pm} run build`;
 
   return `# What changed
 
 Metamorph migrated this project from **${params.source}** to **${params.target}**.
-${params.phase === 'failed' ? '\n**Status:** shadow `npm run build` (or catalog checks) did not pass. Treat this as an incomplete migration.\n' : ''}
+${params.phase === 'failed' ? `\n**Status:** shadow \`${buildCmd}\` (or catalog checks) did not pass. Treat this as an incomplete migration.\n` : ''}
 Your original files were not overwritten until you click **Apply Migration**. After apply, the result lives on a git branch named like \`metamorph/${params.runId}\`.
 
 ## How to run it
@@ -56,8 +60,8 @@ Your original files were not overwritten until you click **Apply Migration**. Af
 1. Apply the migration in the dashboard (or keep working in the shadow workspace).
 2. From the project folder:
    \`\`\`bash
-   npm install
-   npm run dev
+   ${pm} install
+   ${devCmd}
    \`\`\`
 3. Open the URL the framework prints (\`next dev\` → port 3000, Vite → 5173).
 
@@ -204,7 +208,7 @@ const fatalProcessor = {
 
 function draftPrompt(params: {
   reportAbs: string;
-  plan: { profile: { source: string; target: string }; targetPath?: string; runId: string };
+  plan: { profile: { source: string; target: string }; targetPath?: string; runId: string; packageManager?: string };
   notes: ReportNote[];
   draft: string;
 }): string {
@@ -213,6 +217,9 @@ function draftPrompt(params: {
     .slice(-15)
     .map((n) => `${n.filePath}: ${n.detail || n.outcome}`)
     .join('\n');
+
+  const pm = params.plan.packageManager || 'npm';
+  const devCmd = pm === 'yarn' ? 'yarn dev' : `${pm} run dev`;
 
   return `Write a user-facing migration briefing to this exact path:
 ${params.reportAbs}
@@ -226,10 +233,10 @@ Run id: ${params.plan.runId}
 
 Include these sections, in this order, with markdown headings:
 1. What changed — 1-2 short paragraphs in plain language
-2. How to run it — concrete commands (npm install, npm run dev, which port if you can infer from package.json)
+2. How to run it — concrete commands (${pm} install, ${devCmd}, which port if you can infer from package.json)
 3. What we touched — group by area (routes, styles, config, dependencies). Do not dump every file as a checklist unless there are under 12 files.
 4. Watch out for — honest risks from the notes below and from reading package.json / the new entry files
-5. Next steps after Apply — git branch checkout if they applied, npm install on the real project
+5. Next steps after Apply — git branch checkout if they applied, ${pm} install on the real project
 
 You may read package.json, README, src/app/layout.tsx, src/main.tsx, index.html, or MIGRATION.md if they exist.
 
@@ -266,6 +273,7 @@ const draftDuringInstallProcessor = {
       tasks: plan.tasks || [],
       notes: board.notes,
       startedAt: board.startedAt,
+      packageManager: plan.packageManager,
     });
 
     const tools = participant.getTools();
@@ -355,6 +363,7 @@ const completedProcessor = {
       tasks: plan.tasks || [],
       notes: board.notes,
       startedAt: board.startedAt,
+      packageManager: plan.packageManager,
     });
 
     board.pendingStatusPhase = isFailed ? 'failed' : 'completed';
