@@ -100,9 +100,10 @@ export const DashboardPage = () => {
   const handleApplyMigration = async () => {
     if (!latestPlan) return;
     
+    const pm = latestPlan.packageManager || 'npm';
     showConfirm(
       'Apply Migration?',
-      <p>This will copy the migrated files from the shadow workspace into your project directory. Your original project has NOT been modified until this point. After applying, you will need to run <code className="font-mono bg-gray-200 px-1">npm install</code> to install the new dependencies.</p>,
+      <p>This will copy the migrated files from the shadow workspace into your project directory. Your original project has NOT been modified until this point. After applying, you will need to run <code className="font-mono bg-gray-200 px-1">{pm} install</code> to install the new dependencies.</p>,
       async () => {
         setIsApplying(true);
         try {
@@ -126,6 +127,7 @@ export const DashboardPage = () => {
               gitUsed={data.gitUsed}
               branch={data.branch}
               targetPath={latestPlan.targetPath}
+              packageManager={latestPlan.packageManager}
             />
           );
         } catch (err: any) {
@@ -313,15 +315,20 @@ export const DashboardPage = () => {
               {isApplied && (
                 <button
                   type="button"
-                  onClick={() => showAlert(
-                    'Next steps',
-                    <NextStepsViewer
-                      message={lastApply?.message || 'This migration is already applied. Checkout the branch and run npm install / npm run dev.'}
-                      gitUsed={lastApply?.gitUsed ?? Boolean(latestPlan.appliedBranch)}
-                      branch={lastApply?.branch || latestPlan.appliedBranch}
-                      targetPath={latestPlan.targetPath}
-                    />
-                  )}
+                  onClick={() => {
+                    const pm = latestPlan.packageManager || 'npm';
+                    const devCmd = pm === 'yarn' ? 'yarn dev' : `${pm} run dev`;
+                    showAlert(
+                      'Next steps',
+                      <NextStepsViewer
+                        message={lastApply?.message || `This migration is already applied. Checkout the branch and run ${pm} install / ${devCmd}.`}
+                        gitUsed={lastApply?.gitUsed ?? Boolean(latestPlan.appliedBranch)}
+                        branch={lastApply?.branch || latestPlan.appliedBranch}
+                        targetPath={latestPlan.targetPath}
+                        packageManager={latestPlan.packageManager}
+                      />
+                    );
+                  }}
                   className="neo-btn font-black text-sm uppercase px-4 py-2"
                 >
                   Next steps
