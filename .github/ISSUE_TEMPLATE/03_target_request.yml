@@ -1,0 +1,62 @@
+name: "✨ New Migration Target Request"
+description: Propose support for a new source and target framework migration pair in Metamorph.
+title: "[Target Request]: Support migration from <Source> to <Target>"
+labels: ["enhancement", "migration-target"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Metamorph uses layered catalogs and Project Intelligence heuristics to support new frameworks cleanly.
+        Use this form to propose a new framework migration pair!
+
+  - type: input
+    id: source_framework
+    attributes:
+      label: Source Framework / Library
+      description: The technology being migrated away from.
+      placeholder: "e.g. Vue 2, Koa, Angular 14, React Router v5"
+    validations:
+      required: true
+
+  - type: input
+    id: target_framework
+    attributes:
+      label: Target Framework / Library
+      description: The modern framework you want to migrate to.
+      placeholder: "e.g. Next.js 15, Hono, SvelteKit, Fastify"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: architectural_layer
+    attributes:
+      label: Architectural Layer
+      options:
+        - "Frontend UI (SPA / SSR / Islands)"
+        - "Backend HTTP API (Microservices / REST)"
+        - "Fullstack Framework"
+        - "State Management / ORM / Tooling"
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation & Industry Use Case
+      description: Why is this migration pair valuable to the community?
+    validations:
+      required: true
+
+  - type: textarea
+    id: key_challenges
+    attributes:
+      label: Key Architectural Differences & Scaffolds
+      description: What specific routing, configuration, or API shifts need to be addressed?
+      placeholder: "e.g. Options API to Composition API, Express middleware signature to Fastify reply hook"
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: "I am interested in contributing catalog rules or test playground fixtures for this pair."

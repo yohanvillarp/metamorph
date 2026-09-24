@@ -1,0 +1,78 @@
+name: "🔍 Detection / Monorepo Intelligence Issue"
+description: Report an issue where Metamorph misidentified your project type, router variant, or monorepo workspace.
+title: "[Detection Issue]: "
+labels: ["bug", "project-detector"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Metamorph's Project Intelligence Engine (PIE) analyzes workspace boundaries, package manifests, and physical file structures.
+        If your project was misclassified, please share your structure below.
+
+  - type: dropdown
+    id: workspace_type
+    attributes:
+      label: Workspace Structure
+      description: What is the structure of your repository?
+      options:
+        - "Single Standalone Project"
+        - "pnpm Workspaces Monorepo"
+        - "Turborepo Monorepo"
+        - "npm / yarn Workspaces Monorepo"
+        - "Lerna Monorepo"
+        - "Polyglot / Nested Subdirectories"
+    validations:
+      required: true
+
+  - type: input
+    id: expected_tech
+    attributes:
+      label: Expected Project Type
+      placeholder: "e.g. Next.js App Router (using pnpm)"
+    validations:
+      required: true
+
+  - type: input
+    id: detected_tech
+    attributes:
+      label: Actually Detected by Metamorph
+      placeholder: "e.g. React SPA (using npm)"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: config_files
+    attributes:
+      label: Configuration Files Present in Project
+      description: Check all configuration markers that exist in your project root or subfolder.
+      options:
+        - label: "package.json"
+        - label: "pnpm-workspace.yaml"
+        - label: "turbo.json"
+        - label: "next.config.js / next.config.mjs"
+        - label: "vite.config.ts / vite.config.js"
+        - label: "tsconfig.json"
+        - label: "angular.json"
+        - label: "pnpm-lock.yaml / yarn.lock / bun.lockb"
+
+  - type: textarea
+    id: detection_output
+    attributes:
+      label: Output of `metamorph detect` (or API response)
+      description: Paste the output of running detection on your project.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: directory_tree
+    attributes:
+      label: Directory Layout Snippet
+      description: Provide an ASCII tree or file list showing where key files (`app/`, `pages/`, `src/`) are located.
+      placeholder: |
+        my-project/
+        ├── package.json
+        ├── pnpm-lock.yaml
+        └── src/
+            └── app/
+                └── page.tsx
