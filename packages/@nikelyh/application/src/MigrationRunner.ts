@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
-import { StateRepository, MigrationPlan, SemanticEventName, SemanticEventPayloads } from '@nikelyh/domain';
-import { ShadowWorkspace } from '@nikelyh/infrastructure';
+import { StateRepository, MigrationPlan, SemanticEventName, SemanticEventPayloads, PackageManagerType } from '@nikelyh/domain';
+import { ShadowWorkspace, inspectManifest } from '@nikelyh/infrastructure';
 import { Tool } from '@mozaik-ai/core';
 import { bootstrapMetamorph } from './index';
 import { sendEvent, resolveRuntime } from './runtime';
@@ -9,6 +9,7 @@ export interface MigrationRequest {
   targetPath: string;
   from: string;
   to: string;
+  packageManager?: PackageManagerType;
 }
 
 export interface MigrationResult {
@@ -63,11 +64,15 @@ export class MigrationRunner {
     const shadowPath = this.workspace.cloneDirectory(request.targetPath, runId);
 
     const planId = `plan_${randomUUID()}`;
+    const manifest = inspectManifest(request.targetPath);
+    const resolvedPackageManager = request.packageManager || manifest.packageManager || 'npm';
+
     const plan: MigrationPlan = {
       id: planId,
       runId: runId,
       profile: { source: request.from, target: request.to },
       targetPath: request.targetPath,
+      packageManager: resolvedPackageManager,
       phase: 'files',
       tasks: [
         { filePath: 'system:package_manager', status: 'pending' }
@@ -90,6 +95,7 @@ export class MigrationRunner {
           planId,
           profile: plan.profile,
           shadowWorkspacePath: shadowPath,
+          packageManager: resolvedPackageManager,
         } as SemanticEventPayloads.MigrationStarted,
       },
       dispatcherId

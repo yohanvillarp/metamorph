@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Discussions (Q&A & Ideas)
+    url: https://github.com/nikelyh/metamorph/discussions
+    about: Ask migration questions, share architectural ideas, or showcase migrated projects.
+  - name: Official Documentation & Architecture
+    url: https://github.com/nikelyh/metamorph/tree/develop/docs
+    about: Read deep-dive architectural whitepapers, standards, and guides.
+  - name: Security Vulnerabilities
+    url: https://github.com/nikelyh/metamorph/security/policy
+    about: Report security issues privately according to SECURITY.md.

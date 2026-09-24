@@ -1,0 +1,21 @@
+title: "[Q&A]: "
+labels: ["q&a"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Welcome to Metamorph Discussions! Ask any question regarding architecture migration, framework compatibility, or swarm orchestration.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like help with or clarification on?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context & Codebase Details
+      description: Share details about your current stack, framework versions, or what you are trying to achieve.

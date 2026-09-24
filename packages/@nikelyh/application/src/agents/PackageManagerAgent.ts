@@ -158,7 +158,7 @@ const managePackagesProcessor = {
           type: SemanticEventName.SYSTEM_LOG as any,
           producerId: participant.getId(),
           occurredAt: new Date(),
-          payload: { planId: payload.planId, message: 'PackageManager updated package.json. IntegrationAgent will run npm install in the shadow workspace — the original project is untouched until you Apply.', level: 'info' }
+          payload: { planId: payload.planId, message: 'Dependencies updated in package.json: target framework libraries and build scripts configured.', level: 'info' }
         }, participant.getId());
       } catch (err) {
         console.error(`[PackageManagerAgent] Error editing package.json:`, err);

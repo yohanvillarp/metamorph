@@ -1,0 +1,21 @@
+title: "[Idea]: "
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an open-ended idea, architectural proposal, or vision for the future of Metamorph? Let's discuss it!
+
+  - type: textarea
+    id: idea_description
+    attributes:
+      label: Idea Summary
+      description: What is your proposal or idea?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Value & Impact
+      description: How does this benefit developers, AI agents, or software engineering as a whole?

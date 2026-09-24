@@ -81,7 +81,7 @@ export const MigrationQueue = ({ tasks, phase, outcome }: MigrationQueueProps) =
         <h2 className="font-black text-lg sm:text-xl uppercase tracking-widest flex items-center gap-2">
           <ListTree /> File queue
         </h2>
-        <p className="text-xs font-bold mt-1 opacity-90">What the Worker still has to migrate. Integration and Reporter are not files — see Live Swarm.</p>
+        <p className="text-xs font-bold mt-1 opacity-90">Real-time file transformation progress across the project. Phase status and build diagnostics are displayed in the Activity Log.</p>
       </div>
 
       <div className="p-4 border-b-2 border-neo-border space-y-3">

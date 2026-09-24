@@ -6,9 +6,10 @@ interface NextStepsViewerProps {
   gitUsed: boolean;
   branch?: string;
   targetPath: string;
+  packageManager?: string;
 }
 
-export function NextStepsViewer({ message, gitUsed, branch, targetPath }: NextStepsViewerProps) {
+export function NextStepsViewer({ message, gitUsed, branch, targetPath, packageManager }: NextStepsViewerProps) {
   const [step, setStep] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -22,9 +23,10 @@ export function NextStepsViewer({ message, gitUsed, branch, targetPath }: NextSt
     };
   }, []);
 
+  const pm = packageManager || 'npm';
   const commands = gitUsed
-    ? `cd ${targetPath}\ngit fetch\ngit checkout ${branch}\nnpm install`
-    : `cd ${targetPath}\nnpm install`;
+    ? `cd ${targetPath}\ngit fetch\ngit checkout ${branch}\n${pm} install`
+    : `cd ${targetPath}\n${pm} install`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(commands);

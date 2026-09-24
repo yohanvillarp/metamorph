@@ -35,11 +35,10 @@ pnpm-debug.log*
 # Archivos del Sistema Operativo
 .DS_Store
 Thumbs.db
-.agents/
-scratch/
 
-# Personalizado
-AGENTS.md
-GEMINI.md
+# Scratch and Local Playgrounds
+scratch/
 plans/
 local/
+.agents/scratch/
+.agents/local/

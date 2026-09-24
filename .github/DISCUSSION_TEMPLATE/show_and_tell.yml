@@ -1,0 +1,34 @@
+title: "[Show & Tell]: "
+labels: ["show-and-tell"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Did you successfully migrate a project using Metamorph? Share your story, metrics, and experience with the community!
+
+  - type: input
+    id: project_name
+    attributes:
+      label: Project Name / Repository Link (optional)
+      placeholder: "e.g. My-Dashboard (React SPA -> Next.js App Router)"
+
+  - type: dropdown
+    id: migration_pair
+    attributes:
+      label: Framework Pair Migrated
+      options:
+        - "React -> Next.js"
+        - "Express -> Fastify"
+        - "Express -> NestJS"
+        - "Vue -> React / Next"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: experience
+    attributes:
+      label: Migration Experience & Metrics
+      description: How many files were migrated? How long did the swarm take? Did the shadow build succeed on the first try?
+    validations:
+      required: true

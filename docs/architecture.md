@@ -408,7 +408,49 @@ metamorph/
                     tools/          AstTools (ts-morph), BuildTools, LinterTools
                     server/         Express REST API for Dashboard
             cli/                    Commander-based CLI entry point
+    .github/
+        PULL_REQUEST_TEMPLATE/      Specialized PR templates (feature, bugfix, migration, swarm, etc.)
+        PULL_REQUEST_TEMPLATE.md    Default standard Pull Request template
     docs/
         architecture.md             This document
         mozaik/                     Local copy of Mozaik v4 documentation
 ```
+
+---
+
+## 9. Development Workflow & PR Templates
+
+Metamorph follows the Git Flow branching model:
+- **`main`**: Production releases only. Direct commits are blocked.
+- **`develop`**: Integration branch where all active features, fixes, and migration targets land.
+
+### Pull Request Templates
+When submitting changes targeting `develop`, contributors and AI agents must select the appropriate template from `.github/PULL_REQUEST_TEMPLATE/`:
+- `feature.md`: New capabilities and architectural components.
+- `bugfix.md`: Bug fixes with Root Cause Analysis (RCA) and regression tests.
+- `migration_target.md`: Framework migration pairs (`resolveMigrationCatalog`).
+- `swarm_agent.md`: Mozaik v4 agents, lifecycle cleanup (`leave()`), and events.
+- `dashboard_ui.md`: Web dashboard changes adhering to FSD and zero-emoji policy.
+- `architecture.md`: Major architectural refactoring, SQLite schema evolution.
+- `perf_optimization.md`: Performance improvements with Before vs After metrics.
+- `PULL_REQUEST_TEMPLATE.md`: Default fallback template.
+
+---
+
+## 10. Architectural Deep-Dives & Engineering Standards
+
+For in-depth technical whitepapers on each subsystem and standard:
+
+### Subsystem Architecture Whitepapers
+1. [01. Project Intelligence Engine (PIE)](file:///c:/Users/yohan/myspace/lab/active/metamorph/docs/architecture/01-project-intelligence-engine.md): Monorepo workspace traversal, manifest heuristics, router variant inspection, and subsumption DAG.
+2. [02. Polymorphic Package Manager Engine (PPME)](file:///c:/Users/yohan/myspace/lab/active/metamorph/docs/architecture/02-package-manager-engine.md): Universal `npm`, `pnpm`, `yarn`, and `bun` abstraction, SQLite auto-migration, and sandbox build isolation.
+3. [03. Mozaik v4 Concurrent Swarm Engine](file:///c:/Users/yohan/myspace/lab/active/metamorph/docs/architecture/03-mozaik-swarm-orchestration.md): Event-driven agent core, blackboard state, ephemeral participant lifecycles (`leave()`), and concurrency queues.
+4. [04. Shadow Workspace Isolation](file:///c:/Users/yohan/myspace/lab/active/metamorph/docs/architecture/04-shadow-workspace-isolation.md): Zero-risk sandboxing, `assertSandbox` boundary enforcement, AST transformations, and atomic Git apply/rollback.
+5. [05. Layered Migration Catalogs](file:///c:/Users/yohan/myspace/lab/active/metamorph/docs/architecture/05-layered-migration-catalogs.md): Composable rule hierarchy (`resolveMigrationCatalog`), scaffolds, and structural verifiers.
+6. [06. Dashboard Architecture & Telemetry](file:///c:/Users/yohan/myspace/lab/active/metamorph/docs/architecture/06-dashboard-fsd-telemetry.md): Feature-Sliced Design (FSD), real-time Server-Sent Events (SSE), and strict zero-emoji vector iconography.
+
+### Engineering & Quality Standards
+- [Clean Code & Modularity](file:///c:/Users/yohan/myspace/lab/active/metamorph/docs/standards/clean-code-and-modularity.md): Hexagonal layer purity, SOLID principles, and TypeScript zero-`any` standards.
+- [Error Handling & Resilience](file:///c:/Users/yohan/myspace/lab/active/metamorph/docs/standards/error-handling-and-resilience.md): Retry budgets (`MAX_RETRIES`), integration resets, and subprocess timeouts.
+
+

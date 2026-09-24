@@ -17,6 +17,8 @@ import {
   MigrationIntegrator,
   ShadowWorkspace,
   detectTechnologies,
+  inspectProject,
+  detectMonorepo,
   createCheckProjectDiagnosticsTool,
   createRunBuildTool
 } from '@nikelyh/infrastructure';
@@ -36,7 +38,7 @@ const program = new Command();
 program
   .name('metamorph')
   .description('AI-powered technology migration tool using Mozaik Agents')
-  .version('2.1.1');
+  .version('2.1.2');
 
 // ─── RUN COMMAND ───────────────────────────────────────────
 
@@ -65,16 +67,45 @@ program
       svelte: ['react', 'next', 'vue', 'angular'],
     };
 
+    // Monorepo workspace detection and selection
+    const monorepo = detectMonorepo(targetPath);
+    if (monorepo.isMonorepo && monorepo.packages.length > 0) {
+      console.log(chalk.cyan(`\n📦 Monorepo detected (${monorepo.tool || 'workspaces'} with ${monorepo.packages.length} packages).`));
+      const chosenPath = await select({
+        message: 'Select the workspace package you want to migrate:',
+        choices: [
+          ...monorepo.packages.map(p => ({
+            name: `${p.name} (${p.relativePath})`,
+            value: p.absolutePath,
+          })),
+          {
+            name: `Whole root directory (${targetPath})`,
+            value: targetPath,
+          }
+        ],
+      });
+      targetPath = chosenPath;
+    }
+
     if (!from) {
       console.log(chalk.gray(`\n🔍 Scanning directory: ${targetPath}`));
-      const detected = detectTechnologies(targetPath);
+      const profiles = inspectProject(targetPath);
       // Filter detected technologies to only those we support migrating FROM
-      const supportedDetected = detected.filter(d => Object.keys(SUPPORTED_MIGRATIONS).includes(d.framework));
+      const supportedProfiles = profiles.filter(p => Object.keys(SUPPORTED_MIGRATIONS).includes(p.framework));
 
-      if (supportedDetected.length > 0) {
+      if (supportedProfiles.length > 0) {
         from = await select({
           message: 'What technology do you want to migrate FROM?',
-          choices: supportedDetected.map(d => ({ name: `${d.framework} (Detected ${d.confidence}%)`, value: d.framework }))
+          choices: supportedProfiles.map(p => {
+            const details = [
+              p.variant !== 'none' ? p.variant : null,
+              p.bundler !== 'unknown' ? p.bundler : null,
+              p.language === 'typescript' ? 'TS' : 'JS',
+            ].filter(Boolean).join(' | ');
+
+            const label = details ? `${p.framework} (${details} - ${p.confidence}%)` : `${p.framework} (${p.confidence}%)`;
+            return { name: label, value: p.framework };
+          })
         });
       } else {
         console.log(chalk.yellow(`No supported technologies detected in the current directory.`));
@@ -252,15 +283,33 @@ program
 
 program
   .command('detect [path]')
-  .description('Detect frameworks and libraries in a directory')
+  .description('Detect frameworks, architectural variants and monorepo structure in a directory')
   .action(async (targetPath: string) => {
     try {
-      const detected = detectTechnologies(targetPath || '.');
-      if (detected.length === 0) {
-        console.log(chalk.yellow(`No known technologies detected.`));
+      const resolved = targetPath || '.';
+      const monorepo = detectMonorepo(resolved);
+      if (monorepo.isMonorepo) {
+        console.log(chalk.cyan(`\n📦 Monorepo Detected: ${monorepo.tool || 'workspaces'}`));
+        console.log(chalk.gray(`Root: ${monorepo.rootPath}`));
+        console.log(chalk.gray(`Workspace Packages (${monorepo.packages.length}):`));
+        monorepo.packages.forEach(p => console.log(`  • ${chalk.white(p.name)}: ${chalk.gray(p.relativePath)}`));
+      }
+
+      const profiles = inspectProject(resolved);
+      if (profiles.length === 0) {
+        console.log(chalk.yellow(`\nNo supported technologies detected.`));
       } else {
-        console.log(chalk.blue(`\n🔍 Detected Technologies:`));
-        detected.forEach(d => console.log(` - ${chalk.green(d.framework)} (Confidence: ${d.confidence}%) \n    Evidence: ${chalk.gray(d.evidence.join(', '))}`));
+        console.log(chalk.blue(`\n🔍 Detected Technologies & Architecture:`));
+        profiles.forEach(p => {
+          console.log(`\n  • ${chalk.bold.green(p.framework)} (Confidence: ${p.confidence}%)`);
+          console.log(`    Category: ${chalk.cyan(p.category)} | Variant: ${chalk.cyan(p.variant)} | Bundler: ${chalk.cyan(p.bundler)} | Lang: ${chalk.cyan(p.language.toUpperCase())}`);
+          if (p.subsumedDependencies.length > 0) {
+            console.log(`    Subsumed Dependencies: ${chalk.yellow(p.subsumedDependencies.join(', '))}`);
+          }
+          console.log(`    Suggested Targets: ${chalk.magenta(p.suggestedTargets.join(', '))}`);
+          console.log(`    Evidence: ${chalk.gray(p.evidence.join('; '))}`);
+        });
+        console.log('');
       }
     } catch (error: unknown) {
       console.error(chalk.red(`❌ Detection failed: ${error instanceof Error ? error.message : String(error)}`));

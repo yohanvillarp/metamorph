@@ -30,11 +30,23 @@
 
 **Metamorph** is an advanced CLI tool designed to completely automate complex architectural shifts and framework migrations. Instead of relying on regular expressions or manual AST transformations, Metamorph orchestrates a swarm of specialized Agents (Mapper, Worker, Reviewer, and PackageManager) to semantically rewrite your code.
 
-Every migration occurs inside a safe, isolated **Shadow Workspace** (`.metamorph/shadow`). Your original codebase remains completely untouched until you review the swarm's work and explicitly choose to apply the changes via a new Git branch.
+- **Project Intelligence Engine (PIE)**: Autonomously maps complex codebases, heuristics, and monorepos (Turborepo, pnpm workspaces, npm/yarn workspaces, Lerna).
+- **Polymorphic Package Manager Engine (PPME)**: Native, lockfile-aware execution adapting cleanly to `npm`, `pnpm`, `yarn`, and `bun`.
+- **Zero Risk (Shadow Workspace)**: All file mutations and builds occur inside an isolated sandbox (`.metamorph/shadow/<runId>`). Your original code is never touched until you review and apply.
+- **Shadow Verification Build**: Migrations are strictly compiled and verified before completion.
+- **Real-Time Visual Telemetry**: Monitor swarm operations, review feedback, and build diagnostics in real-time via the built-in React dashboard.
 
 ## System Architecture
 
-Metamorph follows a strict hexagonal architecture with an event-driven agent swarm. For the complete technical reference, see **[docs/architecture.md](./docs/architecture.md)**.
+Metamorph follows a strict hexagonal architecture with an event-driven agent swarm. For complete architectural whitepapers, see:
+
+- **[System Architecture Overview](./docs/architecture.md)**
+- **[01. Project Intelligence Engine (PIE)](./docs/architecture/01-project-intelligence-engine.md)**
+- **[02. Polymorphic Package Manager Engine (PPME)](./docs/architecture/02-package-manager-engine.md)**
+- **[03. Mozaik v4 Swarm Orchestration](./docs/architecture/03-mozaik-swarm-orchestration.md)**
+- **[04. Shadow Workspace Isolation](./docs/architecture/04-shadow-workspace-isolation.md)**
+- **[05. Layered Migration Catalogs](./docs/architecture/05-layered-migration-catalogs.md)**
+- **[06. Dashboard FSD & Telemetry](./docs/architecture/06-dashboard-fsd-telemetry.md)**
 
 ```mermaid
 flowchart TB
@@ -98,11 +110,12 @@ metamorph ui
 ```
 
 ### Other Commands
-
-- `metamorph apply <runId> <targetPath>`: Applies a completed migration to your repository, creating a new git branch.
+ 
+- `metamorph run [options]`: Runs an automated migration (e.g. `--from <src> --to <target> --workspace <pkg>`).
+- `metamorph detect [path]`: Detects frameworks, libraries, package managers, and monorepo workspaces.
+- `metamorph apply <runId> [targetPath]`: Applies a completed migration to your repository, creating a new git branch.
 - `metamorph rollback <runId>`: Discards an unapplied migration and cleans up the shadow workspace.
 - `metamorph list`: Lists all migration history.
-- `metamorph detect [path]`: Detects frameworks and libraries in the current project.
 - `metamorph reset`: Clears all migration history and events from the local database.
 
 ## Supported Migrations
@@ -166,5 +179,5 @@ We welcome contributions! If you'd like to add support for a new framework migra
 
 ---
 <div align="center">
-  <i>Built with Mozaik</i>
+  <i>Built with Mozaik 💖</i>
 </div>

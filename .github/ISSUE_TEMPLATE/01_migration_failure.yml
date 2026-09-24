@@ -1,0 +1,103 @@
+name: "🚨 Migration Failure Report"
+description: Report a failed framework migration, shadow build failure, or reviewer rejection loop.
+title: "[Migration Failure]: "
+labels: ["bug", "migration-failure"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a migration issue! Metamorph isolates all work in `.metamorph/shadow/<runId>`. 
+        Please provide the details below so we can reproduce and fix the agent or compiler failure.
+
+  - type: dropdown
+    id: migration_pair
+    attributes:
+      label: Migration Pair
+      description: Select the framework migration pair that encountered the failure.
+      options:
+        - "react -> next (App Router)"
+        - "react -> next (Pages Router)"
+        - "react -> vue"
+        - "react -> angular"
+        - "react -> svelte"
+        - "next -> react"
+        - "express -> fastify"
+        - "express -> nestjs"
+        - "fastify -> express"
+        - "fastify -> nestjs"
+        - "nestjs -> express"
+        - "nestjs -> fastify"
+        - "Other / Custom Target"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: package_manager
+    attributes:
+      label: Package Manager Detected
+      description: Which package manager does your target project use?
+      options:
+        - "npm"
+        - "pnpm"
+        - "yarn"
+        - "bun"
+        - "Unknown / Mixed"
+    validations:
+      required: true
+
+  - type: input
+    id: metamorph_version
+    attributes:
+      label: Metamorph Version
+      description: Run `metamorph --version` or check your installed package version.
+      placeholder: "e.g. 2.1.1"
+    validations:
+      required: true
+
+  - type: input
+    id: run_id
+    attributes:
+      label: Run ID (if available)
+      description: Found in terminal output or in `.metamorph/shadow/<runId>`.
+      placeholder: "e.g. run-1727145892-abc"
+
+  - type: dropdown
+    id: failure_phase
+    attributes:
+      label: Failure Phase
+      description: In which phase did the failure occur?
+      options:
+        - "WorkerAgent (Code transformation error or syntax rejection)"
+        - "ReviewerAgent (Exceeded retry budget MAX_RETRIES = 2)"
+        - "IntegrationAgent (Shadow build / compile failed)"
+        - "PackageManagerAgent (Manifest / dependency resolution)"
+        - "Coordinator Watchdog / Timeout"
+        - "CLI / Apply phase"
+    validations:
+      required: true
+
+  - type: textarea
+    id: error_logs
+    attributes:
+      label: Compiler Output / Shadow Build Logs
+      description: Paste the terminal error output or compiler diagnostics (from `MIGRATION.md` or `.metamorph/history.db`).
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: implicated_files
+    attributes:
+      label: Implicated Files / Code Snippets
+      description: Which source files caused the failure or contained syntax errors after migration?
+      placeholder: "e.g. src/app/page.tsx, src/components/Header.tsx"
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmations
+      options:
+        - label: "I confirmed that my original project source code was unaffected (Zero-Risk guarantee intact)."
+          required: true
+        - label: "I tested running the migration with the latest version of Metamorph."
+          required: false

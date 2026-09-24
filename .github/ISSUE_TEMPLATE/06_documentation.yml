@@ -1,0 +1,37 @@
+name: "📚 Documentation Request / Fix"
+description: Report an issue with the documentation, missing guide, or suggest improvements.
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping keep Metamorph documentation world-class!
+
+  - type: input
+    id: doc_url
+    attributes:
+      label: Documentation Page / File Path
+      description: Which markdown file or section contains the issue?
+      placeholder: "e.g. docs/architecture/01-project-intelligence-engine.md"
+
+  - type: textarea
+    id: issue_description
+    attributes:
+      label: What needs to be improved or corrected?
+      description: Describe what is missing, unclear, or outdated.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested_content
+    attributes:
+      label: Suggested Content / Correction
+      description: If you have a specific suggestion, write or paste it here.
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: "I am willing to submit a Pull Request to fix this documentation."

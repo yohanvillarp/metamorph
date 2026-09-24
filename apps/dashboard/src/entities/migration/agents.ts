@@ -1,9 +1,9 @@
 export const SWARM_AGENTS = [
-  { id: 'Mapper', color: '#eab308', hint: 'Discovers files to migrate' },
-  { id: 'Worker', color: '#3b82f6', hint: 'Rewrites files in the shadow workspace' },
-  { id: 'Reviewer', color: '#a855f7', hint: 'Approves or rejects each file' },
-  { id: 'Integration', color: '#06b6d4', hint: 'npm install, build, and cross-file fixes' },
-  { id: 'Reporter', color: '#22c55e', hint: 'Writes MIGRATION.md for you' },
+  { id: 'Mapper', color: '#eab308', hint: 'Discovers project files and builds task queue' },
+  { id: 'Worker', color: '#3b82f6', hint: 'Transforms source files in the shadow workspace' },
+  { id: 'Reviewer', color: '#a855f7', hint: 'Verifies syntax and semantic neighbor contracts' },
+  { id: 'Integration', color: '#06b6d4', hint: 'Dependency install, verification build, and repair' },
+  { id: 'Reporter', color: '#22c55e', hint: 'Compiles MIGRATION.md report and apply instructions' },
 ] as const;
 
 export type SwarmAgentId = (typeof SWARM_AGENTS)[number]['id'];
