@@ -20,6 +20,7 @@ interface PlanRow {
   outcome?: string | null;
   applied_at?: string | null;
   applied_branch?: string | null;
+  package_manager?: string | null;
 }
 
 interface TaskRow {
@@ -83,6 +84,7 @@ export class SQLiteStateStore implements StateRepository {
     try { this.db.exec('ALTER TABLE plans ADD COLUMN outcome TEXT'); } catch (e) {}
     try { this.db.exec('ALTER TABLE plans ADD COLUMN applied_at TEXT'); } catch (e) {}
     try { this.db.exec('ALTER TABLE plans ADD COLUMN applied_branch TEXT'); } catch (e) {}
+    try { this.db.exec("ALTER TABLE plans ADD COLUMN package_manager TEXT DEFAULT 'npm'"); } catch (e) {}
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -108,8 +110,8 @@ export class SQLiteStateStore implements StateRepository {
 
   async savePlan(plan: MigrationPlan): Promise<void> {
     const stmtPlan = this.db.prepare(`
-      INSERT OR REPLACE INTO plans (id, run_id, target_path, source_framework, target_framework, rules_json, created_at, integration_rounds, phase, outcome, applied_at, applied_branch)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO plans (id, run_id, target_path, source_framework, target_framework, rules_json, created_at, integration_rounds, phase, outcome, applied_at, applied_branch, package_manager)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     stmtPlan.run(
@@ -124,7 +126,8 @@ export class SQLiteStateStore implements StateRepository {
       plan.phase || 'files',
       plan.outcome || null,
       plan.appliedAt ? plan.appliedAt.toISOString() : null,
-      plan.appliedBranch || null
+      plan.appliedBranch || null,
+      plan.packageManager || 'npm'
     );
 
     const stmtTask = this.db.prepare(`
@@ -148,6 +151,7 @@ export class SQLiteStateStore implements StateRepository {
       id: planRow.id,
       runId: planRow.run_id,
       targetPath: planRow.target_path,
+      packageManager: (planRow.package_manager as MigrationPlan['packageManager']) || 'npm',
       profile: {
         source: planRow.source_framework,
         target: planRow.target_framework,

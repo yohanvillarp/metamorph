@@ -101,4 +101,42 @@ describe('SQLiteStateStore', () => {
     assert.ok(all.some(p => p.id === 'plan-1' && p.outcome === 'success'));
     assert.ok(all.some(p => p.id === 'plan-2' && p.outcome === undefined));
   });
+
+  test('saves and retrieves plan with custom packageManager (pnpm, bun, yarn)', async () => {
+    const { store } = createTestStore();
+    const plan: MigrationPlan = {
+      id: 'plan-pnpm',
+      runId: 'run-pnpm',
+      targetPath: './packages/web',
+      packageManager: 'pnpm',
+      profile: { source: 'react', target: 'next' },
+      createdAt: new Date(),
+      phase: 'files',
+      tasks: [],
+    };
+
+    await store.savePlan(plan);
+    const retrieved = await store.getPlan('plan-pnpm');
+
+    assert.ok(retrieved);
+    assert.equal(retrieved.packageManager, 'pnpm');
+  });
+
+  test('defaults packageManager to npm when omitted', async () => {
+    const { store } = createTestStore();
+    const plan: MigrationPlan = {
+      id: 'plan-legacy',
+      runId: 'run-legacy',
+      profile: { source: 'express', target: 'fastify' },
+      createdAt: new Date(),
+      phase: 'files',
+      tasks: [],
+    };
+
+    await store.savePlan(plan);
+    const retrieved = await store.getPlan('plan-legacy');
+
+    assert.ok(retrieved);
+    assert.equal(retrieved.packageManager, 'npm');
+  });
 });
