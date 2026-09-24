@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Folder, FolderOpen, ChevronRight, ArrowUp, FileCode2, Check, Loader2 } from 'lucide-react';
+import { Folder, FolderOpen, ChevronRight, ArrowUp, FileCode2, Check, Loader2, X } from 'lucide-react';
 
 const API_BASE = '';
 
@@ -73,9 +73,10 @@ export const FolderPicker = ({ value, onChange }: FolderPickerProps) => {
               <h3 className="font-black uppercase tracking-widest text-sm">Select Folder</h3>
               <button
                 onClick={() => setIsOpen(false)}
-                className="neo-btn text-xs px-3 py-1"
+                className="neo-btn text-xs px-2 py-1 flex items-center justify-center"
+                aria-label="Close"
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
 
