@@ -30,6 +30,14 @@ This repository uses the standard Git Flow model:
     ```bash
     git push origin feature/your-feature-name
     ```
+    Choose the appropriate Pull Request template from `.github/PULL_REQUEST_TEMPLATE/` (or use the default):
+    - `feature.md`: New features and capabilities
+    - `bugfix.md`: Bug fixes with RCA and regression tests
+    - `migration_target.md`: Adding/updating framework migration pairs
+    - `swarm_agent.md`: Mozaik v4 agents, event dynamics, and lifecycle
+    - `dashboard_ui.md`: Web dashboard UI, FSD, and zero-emoji compliance
+    - `architecture.md`: Architectural refactoring, boundaries, and schema migrations
+    - `perf_optimization.md`: Performance bottlenecks, benchmarks, and profiling
 
 4.  **Review and CI**:
     Our GitHub Actions will run validations, linters, and tests automatically. Once approved and passing, it will be merged into `develop`.
@@ -42,3 +50,13 @@ This repository uses the standard Git Flow model:
 To start developing:
 1. `npm install`
 2. `npx turbo run build`
+
+## Coding & Architectural Standards
+
+All contributions must adhere to our engineering principles:
+- **Hexagonal Layer Purity**: `@nikelyh/domain` must have **zero I/O dependencies** (no filesystem, SQLite, or Express).
+- **Single Responsibility (SRP)**: Keep functions and classes focused. Handlers should be concise (< 50 lines).
+- **Strict Typing**: No `any`. Use strict interfaces, union discriminators, and TypeScript `satisfies`.
+- **Zero Magic Strings**: Always use typed enums and constants (`SemanticEventName`, `PackageManagerType`).
+- **Dashboard UI Standards**: Adhere to Feature-Sliced Design (FSD) and use vector icons exclusively (`lucide-react`, **strictly zero emojis**).
+

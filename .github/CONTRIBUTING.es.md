@@ -30,6 +30,14 @@ Este repositorio utiliza el modelo estándar de Git Flow:
     ```bash
     git push origin feature/nombre-de-tu-feature
     ```
+    Elige la plantilla de Pull Request adecuada desde `.github/PULL_REQUEST_TEMPLATE/` (o usa la predeterminada):
+    - `feature.md`: Nuevas características y capacidades
+    - `bugfix.md`: Corrección de errores con RCA y pruebas de regresión
+    - `migration_target.md`: Agregar o actualizar pares de migración de frameworks
+    - `swarm_agent.md`: Agentes Mozaik v4, dinámica de eventos y ciclo de vida
+    - `dashboard_ui.md`: Interfaz web del dashboard, FSD y cumplimiento de cero emojis
+    - `architecture.md`: Refactorización arquitectónica, límites y migraciones de esquema
+    - `perf_optimization.md`: Cuellos de botella de rendimiento, benchmarks y profiling
 
 4.  **Revisión y CI**:
     Nuestras GitHub Actions correrán validaciones, linters y tests automáticamente. Una vez aprobado y en verde, se hará merge a `develop`.
@@ -42,3 +50,13 @@ Este repositorio utiliza el modelo estándar de Git Flow:
 Para empezar a desarrollar:
 1. `npm install`
 2. `npx turbo run build`
+
+## Estándares de Código y Arquitectura
+
+Toda contribución debe respetar nuestros principios de ingeniería:
+- **Pureza Hexagonal**: `@nikelyh/domain` tiene **cero dependencias de E/S** (sin filesystem, SQLite ni Express).
+- **Responsabilidad Única (SRP)**: Funciones y clases pequeñas y enfocadas. Handlers concisos (< 50 líneas).
+- **Tipado Estricto**: Prohibido el uso de `any`. Usa interfaces explícitas y `satisfies`.
+- **Cero Strings Mágicos**: Emplea siempre enums y constantes tipadas (`SemanticEventName`, `PackageManagerType`).
+- **Estándares del Dashboard**: Respeta Feature-Sliced Design (FSD) y usa iconos vectoriales (`lucide-react`, **estrictamente cero emojis**).
+
