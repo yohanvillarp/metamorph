@@ -1,0 +1,77 @@
+name: "🐛 Bug Report (CLI / Dashboard / API)"
+description: Report an issue with the CLI interface, Dashboard Web UI, Express REST server, or database.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please use this template for reporting bugs in the CLI runner, Dashboard UI, or local services.
+        If your issue is specifically about a failed migration build, please use the **Migration Failure Report** form instead.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Subsystem
+      description: Which part of Metamorph is malfunctioning?
+      options:
+        - "CLI (Commands, interactive prompts, Ora spinner)"
+        - "Web Dashboard (React 18/19 UI, NextStepsViewer, SwarmView)"
+        - "Express REST Server / SSE Event Stream (/api/events)"
+        - "SQLite Database (.metamorph/history.db)"
+        - "Build / Installation Tools"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - "Windows"
+        - "macOS"
+        - "Linux"
+    validations:
+      required: true
+
+  - type: input
+    id: node_version
+    attributes:
+      label: Node.js Version
+      description: Run `node -v` (Node >= 20.0.0 required).
+      placeholder: "e.g. v20.18.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the Bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Steps to Reproduce
+      description: What exact steps reproduce the issue?
+      value: |
+        1. Run `metamorph ...`
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Terminal / Browser Logs
+      description: Paste any stack traces or terminal outputs here.
+      render: shell
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: A concise description of what you expected to happen.
