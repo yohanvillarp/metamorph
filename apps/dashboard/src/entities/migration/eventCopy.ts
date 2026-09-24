@@ -2,16 +2,16 @@ import { classifySwarmAgent, type SwarmAgentId } from './agents';
 
 const EVENT_TITLES: Record<string, string> = {
   'migration.started': 'Migration started',
-  'file.discovered': 'File queued',
-  'file.migrated': 'Worker finished a file',
-  'file.reviewed': 'Reviewer approved a file',
-  'file.rejected': 'File sent back for repair',
-  'file.fatal_mismatch': 'Architecture mismatch',
-  'file.failed': 'File repair budget exhausted',
-  'phase.packages_ready': 'Package.json updated',
-  'phase.integration_started': 'Install / build started',
-  'migration.completed': 'Swarm finished',
-  'migration.applied': 'Applied to your repo',
+  'file.discovered': 'File discovered',
+  'file.migrated': 'Code transformed',
+  'file.reviewed': 'Code verified',
+  'file.rejected': 'Reopened for repair',
+  'file.fatal_mismatch': 'Architectural mismatch',
+  'file.failed': 'Transformation failed',
+  'phase.packages_ready': 'Dependencies configured',
+  'phase.integration_started': 'Shadow build verification',
+  'migration.completed': 'Migration completed',
+  'migration.applied': 'Applied to repository',
   'system.log': 'Status update',
 };
 

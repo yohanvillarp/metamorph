@@ -73,7 +73,7 @@ const startWatchdogProcessor = {
       occurredAt: new Date(),
       payload: {
         planId: p.planId,
-        message: 'Coordinator watchdog is on: if file work settles and Integration never starts, it will kick within 8s. No extra model calls.',
+        message: 'Swarm coordinator active: orchestrating agent tasks and monitoring workflow progress.',
         level: 'info',
       },
     }, producerId);
@@ -93,7 +93,7 @@ const startWatchdogProcessor = {
             occurredAt: new Date(),
             payload: {
               planId: p.planId,
-              message: 'Coordinator watchdog timed out after 30 minutes. Integration never became ready or the run stalled.',
+              message: 'Migration session timed out after 30 minutes: task completion could not be verified.',
               level: 'error',
             },
           }, producerId);
