@@ -372,7 +372,7 @@ const completedProcessor = {
       const path = await import('node:path');
       const dest = path.join(shadowPath, 'MIGRATION.md');
       if (board.reportLoopActive) {
-        log(participant.getId(), p.planId, 'Reporter draft is still running; Status will be patched when it finishes (no second model call).');
+        log(participant.getId(), p.planId, 'Compiling comprehensive migration briefing in the background...');
         return;
       }
       const result = await writeOrPatchMigrationMd(dest, effectivePhase, draft);
@@ -381,12 +381,12 @@ const completedProcessor = {
         participant.getId(),
         p.planId,
         result === 'patched'
-          ? 'Reporter patched MIGRATION.md with the final build Status (no extra model call).'
-          : 'Reporter finished. Open MIGRATION.md in the shadow workspace (it is copied to your project when you Apply).',
+          ? 'Updated MIGRATION.md with final build verification status.'
+          : 'Migration report ready in MIGRATION.md: review changes and run Apply to merge into your project.',
       );
     } catch (error) {
       console.error('[ReporterAgent] Could not ensure MIGRATION.md:', error);
-      log(participant.getId(), p.planId, 'Reporter could not write MIGRATION.md.', 'warning');
+      log(participant.getId(), p.planId, 'Could not generate MIGRATION.md report.', 'warning');
     }
   },
 };

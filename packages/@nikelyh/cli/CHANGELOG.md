@@ -1,5 +1,15 @@
 # @nikelyh/metamorph
 
+## 2.1.2
+
+### Minor & Patch Changes
+
+- **Project Intelligence Engine (PIE)**: Multi-stage heuristic detection with confidence scoring, subsumption DAG, and interactive monorepo workspace selector (`--workspace`, supporting Turborepo, pnpm workspaces, npm/yarn workspaces, and Lerna).
+- **Polymorphic Package Manager Engine (PPME)**: Native, lockfile-aware support for `npm`, `pnpm`, `yarn`, and `bun` across dependency configuration, shadow workspace installation/build verification, and dashboard next-steps telemetry.
+- **User Experience & Telemetry Polish**: Standardized and refined user-facing agent status messages, queue telemetry, and event descriptions to eliminate internal developer debug jargon.
+- **System Architecture Whitepapers**: Published 6 comprehensive technical whitepapers covering PIE, PPME, Mozaik Swarm, Shadow Workspace, Layered Catalogs, and Dashboard FSD in `docs/architecture/`.
+- **Interactive Community Governance**: Introduced GitHub Issue Forms, Discussion templates, and formal contribution policies (`SUPPORT.md`, `SECURITY.md`).
+
 ## 2.1.1
 
 ### Patch Changes

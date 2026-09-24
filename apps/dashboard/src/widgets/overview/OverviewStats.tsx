@@ -23,8 +23,8 @@ export const OverviewStats = ({ pendingTasks, inProgressTasks, completedTasks, f
           <h3 className="neo-title border-black">In Progress</h3>
           {isIntegrating && !busyFiles ? (
             <>
-              <p className="text-2xl font-black uppercase tracking-widest animate-pulse leading-tight">Installing</p>
-              <p className="text-xs font-bold mt-1">File queue is idle. IntegrationAgent is running npm install / build.</p>
+              <p className="text-2xl font-black uppercase tracking-widest animate-pulse leading-tight">Building</p>
+              <p className="text-xs font-bold mt-1">File queue idle. Shadow workspace build and dependency verification in progress.</p>
             </>
           ) : (
             <p className={`text-5xl font-black ${busyFiles ? 'animate-pulse' : ''}`}>{inProgressTasks}</p>

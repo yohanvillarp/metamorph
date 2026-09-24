@@ -241,7 +241,7 @@ const integrationProcessor = {
       log(
         producerId,
         planId,
-        `File migration is done. Next: install dependencies in the shadow workspace (${pmCommands.cleanInstall}). This can take several minutes — counters staying at 0 is expected.`,
+        `Source files transformed. Installing dependencies in shadow workspace with ${pmCommands.cleanInstall}...`,
       );
       console.log(`[IntegrationAgent] ${pmCommands.cleanInstall} starting in ${shadowPath}`);
 
@@ -256,7 +256,7 @@ const integrationProcessor = {
             log(
               producerId,
               planId,
-              `${pmCommands.cleanInstall} is still running in the shadow workspace. Wait — this is not finished.`,
+              `${pmCommands.cleanInstall} is in progress in the shadow workspace...`,
             );
           }
         },
@@ -269,7 +269,7 @@ const integrationProcessor = {
         log(
           producerId,
           planId,
-          `${pmCommands.cleanInstall} failed in the shadow workspace. Halting build to avoid noisy compile errors.`,
+          `${pmCommands.cleanInstall} failed in the shadow workspace. Halting to diagnose dependency conflicts.`,
           "error",
         );
 
@@ -277,7 +277,7 @@ const integrationProcessor = {
           await failMigration(
             producerId,
             planId,
-            `${pmCommands.cleanInstall} failed in the shadow workspace after ${MAX_INTEGRATION_ROUNDS} integration rounds. The migration is not successful.`,
+            `${pmCommands.cleanInstall} failed in the shadow workspace after ${MAX_INTEGRATION_ROUNDS} integration rounds. The migration could not complete.`,
           );
           return;
         }
@@ -296,7 +296,7 @@ const integrationProcessor = {
       log(
         producerId,
         planId,
-        `${pmCommands.cleanInstall} finished. Next: ${pmCommands.runBuild} in the shadow workspace.`,
+        `Dependencies installed successfully. Running verification build (${pmCommands.runBuild})...`,
       );
 
       let lastBuildBeat = Date.now();
@@ -310,7 +310,7 @@ const integrationProcessor = {
             log(
               producerId,
               planId,
-              "npm run build is still running in the shadow workspace. Wait — this is not finished.",
+              `${pmCommands.runBuild} is in progress in the shadow workspace...`,
             );
           }
         },
@@ -320,7 +320,7 @@ const integrationProcessor = {
         log(
           producerId,
           planId,
-          "Shadow build failed. IntegrationAgent will attempt local repairs before requeueing files.",
+          "Verification build encountered errors. Analyzing diagnostics for automated repair...",
         );
         const shadowTools: Tool[] = [
           createReadFileTool(shadowPath),
@@ -408,7 +408,7 @@ When you have applied fixes (or cannot fix further), stop. A deterministic rebui
         await completeMigration(
           producerId,
           planId,
-          "Shadow build succeeded. Reporter is writing MIGRATION.md next. Then Apply copies the result into your project.",
+          "Verification build succeeded cleanly. Generating final migration report and instructions...",
           "info",
         );
         return;
@@ -439,8 +439,8 @@ When you have applied fixes (or cannot fix further), stop. A deterministic rebui
           producerId,
           planId,
           buildFailed
-            ? `${pmCommands.runBuild} (or ${pmCommands.cleanInstall}) failed. Assigning repair tasks to Worker — the run is not finished.`
-            : `Shadow compile may succeed while the app is still wrong: ${structureIssues.length} verifier issue(s). Assigning repair tasks.`,
+            ? `Verification build failed. Reopening implicated files for automated repair...`
+            : `Structure verifier identified ${structureIssues.length} architectural issue(s). Reopening files for repair...`,
           "warning",
         );
         await requeueBrokenFiles(
@@ -456,8 +456,8 @@ When you have applied fixes (or cannot fix further), stop. A deterministic rebui
         producerId,
         planId,
         lastRound
-          ? `${pmCommands.runBuild} still does not pass after ${MAX_INTEGRATION_ROUNDS} integration rounds. The migration is not successful.`
-          : "Shadow verification failed and no repair files could be assigned.",
+          ? `Verification build did not pass after ${MAX_INTEGRATION_ROUNDS} integration rounds. Please inspect MIGRATION.md for diagnostic details.`
+          : "Shadow verification failed and no repair targets could be assigned.",
       );
     } catch (error: unknown) {
       console.error(`[IntegrationAgent] Error:`, error);

@@ -63,7 +63,7 @@ export const EventLog = ({ events }: EventLogProps) => {
         <h2 className="neo-title flex items-center gap-2 mb-1">
           <Radio /> Activity log
         </h2>
-        <p className="text-xs font-bold text-neo-text/60">Newest first. Status lines are what the swarm is doing; open Details only if you need the raw payload.</p>
+        <p className="text-xs font-bold text-neo-text/60">Real-time swarm activity feed. Expand any row to inspect the detailed event payload.</p>
       </div>
 
       <div className="p-4 border-b-2 border-neo-border space-y-3">
@@ -83,7 +83,7 @@ export const EventLog = ({ events }: EventLogProps) => {
             onClick={() => setErrorsOnly((value) => !value)}
             className={`px-3 py-1 border-2 border-neo-border text-[10px] font-black uppercase tracking-widest ${errorsOnly ? 'bg-red-400 text-black' : 'bg-white hover:bg-red-100'}`}
           >
-            Problems
+            Issues
           </button>
         </div>
         <label className="flex items-center gap-2 border-2 border-neo-border bg-white px-3 py-2">
