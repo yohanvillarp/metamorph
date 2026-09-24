@@ -38,7 +38,7 @@ const program = new Command();
 program
   .name('metamorph')
   .description('AI-powered technology migration tool using Mozaik Agents')
-  .version('2.1.1');
+  .version('2.1.2');
 
 // ─── RUN COMMAND ───────────────────────────────────────────
 

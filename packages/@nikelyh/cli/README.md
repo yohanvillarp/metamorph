@@ -20,10 +20,12 @@ Metamorph is a CLI tool powered by [Mozaik](https://github.com/jigjoy-ai/mozaik)
 
 ## Features
 
+- **Project Intelligence Engine (PIE)** -- Autonomously detects project architecture, frameworks, and monorepo workspace topologies (Turborepo, pnpm workspaces, npm/yarn workspaces, Lerna).
+- **Polymorphic Package Manager (PPME)** -- Automatically detects and adapts to your chosen package manager (`npm`, `pnpm`, `yarn`, `bun`) without host process leakage.
 - **Multi-Agent Concurrency** -- Utilizes Mapper, Worker, Reviewer, Integration, and Coordinator agents to migrate code in parallel.
-- **Zero Risk** -- All migrations happen in a `.metamorph/shadow` workspace. Your original code is completely untouched until you explicitly approve and apply the changes.
+- **Zero Risk (Shadow Workspace)** -- All migrations happen in an isolated `.metamorph/shadow` workspace. Your original code is completely untouched until you explicitly approve and apply the changes.
+- **Shadow Build Verification** -- Every migration is validated with your package manager (`npm`, `pnpm`, `yarn`, `bun`) and verification build inside the shadow workspace before completion.
 - **Visual Dashboard** -- Watch your agents work in real-time through the built-in local dashboard UI.
-- **Shadow Build Verification** -- Every migration is validated with `npm install` and `npm run build` inside the shadow workspace before completion.
 - **Extensive Framework Support** -- Easily migrate between popular frontend and backend frameworks.
 
 ## Installation
@@ -120,4 +122,4 @@ See the complete, up-to-date list of all supported frontend and backend framewor
 
 ---
 
-*Built with [Mozaik](https://github.com/jigjoy-ai/mozaik).*
+*Built with [Mozaik](https://github.com/jigjoy-ai/mozaik).* 💖
