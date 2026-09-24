@@ -2,6 +2,7 @@
 export * from './entities/MigrationProfile';
 export * from './entities/MigrationPlan';
 export * from './entities/ProjectProfile';
+export * from './entities/PackageManagerCommands';
 export * from './entities/catalogs';
 
 // Ports

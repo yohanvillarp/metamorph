@@ -1,4 +1,5 @@
 import { MigrationProfile } from '../entities/MigrationProfile';
+import { PackageManagerType } from '../entities/ProjectProfile';
 
 /**
  * Official names of the Semantic Events for the Mozaik Bus.
@@ -27,6 +28,7 @@ export namespace SemanticEventPayloads {
     planId: string;
     profile: MigrationProfile;
     shadowWorkspacePath?: string;
+    packageManager?: PackageManagerType;
   }
 
   export interface FileDiscovered {
