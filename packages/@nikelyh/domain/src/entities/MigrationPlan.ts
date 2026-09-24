@@ -1,4 +1,5 @@
 import { MigrationProfile } from './MigrationProfile';
+import { PackageManagerType } from './ProjectProfile';
 
 /**
  * Possible statuses for a file task during the migration.
@@ -55,6 +56,11 @@ export interface MigrationPlan {
    * Original target directory path.
    */
   targetPath?: string;
+
+  /**
+   * Detected or specified package manager (npm, pnpm, yarn, bun).
+   */
+  packageManager?: PackageManagerType;
 
   /**
    * List of file tasks to migrate.

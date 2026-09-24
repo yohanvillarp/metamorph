@@ -56,6 +56,7 @@ export interface MigrationPlan {
   sourceFramework: string;
   targetFramework: string;
   targetPath: string;
+  packageManager?: 'npm' | 'pnpm' | 'yarn' | 'bun';
   phase?: 'files' | 'integration' | 'completed' | 'failed';
   outcome?: 'success' | 'failed';
   appliedAt?: string;

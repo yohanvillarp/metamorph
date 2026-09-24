@@ -6,7 +6,7 @@ import {
   SituationSpecification,
   Tool,
 } from "@mozaik-ai/core";
-import { SemanticEventName, SemanticEventPayloads } from "@nikelyh/domain";
+import { SemanticEventName, SemanticEventPayloads, resolvePackageManagerCommands } from "@nikelyh/domain";
 import { join, leave, resolveRuntime, runLoop, sendEvent } from "../runtime";
 
 const MAX_INTEGRATION_ROUNDS = 4;
@@ -233,20 +233,22 @@ const integrationProcessor = {
         payload.shadowWorkspacePath ||
         new ShadowWorkspace().getShadowPath(plan.runId);
 
+      const pmCommands = resolvePackageManagerCommands(plan.packageManager);
+
       console.log(
         `[IntegrationAgent] Shadow build round ${plan.integrationRounds}/${MAX_INTEGRATION_ROUNDS} in ${shadowPath}`,
       );
       log(
         producerId,
         planId,
-        `File migration is done. Next: install dependencies in the shadow workspace (npm install). This can take several minutes — counters staying at 0 is expected.`,
+        `File migration is done. Next: install dependencies in the shadow workspace (${pmCommands.cleanInstall}). This can take several minutes — counters staying at 0 is expected.`,
       );
-      console.log(`[IntegrationAgent] npm install starting in ${shadowPath}`);
+      console.log(`[IntegrationAgent] ${pmCommands.cleanInstall} starting in ${shadowPath}`);
 
       let lastInstallBeat = Date.now();
       const install = await runInShadowWorkspace(
         shadowPath,
-        "npm install --no-fund --no-audit",
+        pmCommands.cleanInstall,
         (chunk) => {
           process.stdout.write(chunk);
           if (Date.now() - lastInstallBeat >= 15000) {
@@ -254,20 +256,20 @@ const integrationProcessor = {
             log(
               producerId,
               planId,
-              "npm install is still running in the shadow workspace. Wait — this is not finished.",
+              `${pmCommands.cleanInstall} is still running in the shadow workspace. Wait — this is not finished.`,
             );
           }
         },
       );
       if (!install.ok) {
         console.warn(
-          "[IntegrationAgent] npm install failed in shadow:",
+          `[IntegrationAgent] ${pmCommands.cleanInstall} failed in shadow:`,
           install.output.slice(0, 2000),
         );
         log(
           producerId,
           planId,
-          "npm install failed in the shadow workspace. Halting build to avoid noisy compile errors.",
+          `${pmCommands.cleanInstall} failed in the shadow workspace. Halting build to avoid noisy compile errors.`,
           "error",
         );
 
@@ -275,7 +277,7 @@ const integrationProcessor = {
           await failMigration(
             producerId,
             planId,
-            `npm install failed in the shadow workspace after ${MAX_INTEGRATION_ROUNDS} integration rounds. The migration is not successful.`,
+            `${pmCommands.cleanInstall} failed in the shadow workspace after ${MAX_INTEGRATION_ROUNDS} integration rounds. The migration is not successful.`,
           );
           return;
         }
@@ -286,7 +288,7 @@ const integrationProcessor = {
           producerId,
           planId,
           [pkgPath],
-          [`npm install failed in shadow workspace:\n${install.output.slice(0, 2500)}`],
+          [`${pmCommands.cleanInstall} failed in shadow workspace:\n${install.output.slice(0, 2500)}`],
         );
         return;
       }
@@ -294,13 +296,13 @@ const integrationProcessor = {
       log(
         producerId,
         planId,
-        "npm install finished. Next: npm run build in the shadow workspace.",
+        `${pmCommands.cleanInstall} finished. Next: ${pmCommands.runBuild} in the shadow workspace.`,
       );
 
       let lastBuildBeat = Date.now();
       let build = await runInShadowWorkspace(
         shadowPath,
-        "npm run build",
+        pmCommands.runBuild,
         (chunk) => {
           process.stdout.write(chunk);
           if (Date.now() - lastBuildBeat >= 15000) {
@@ -426,10 +428,10 @@ When you have applied fixes (or cannot fix further), stop. A deterministic rebui
         ...structureIssues.flatMap((issue) => issue.errors),
         ...(install.ok
           ? []
-          : [`npm install failed:\n${install.output.slice(0, 1500)}`]),
+          : [`${pmCommands.cleanInstall} failed:\n${install.output.slice(0, 1500)}`]),
         ...(build.ok
           ? []
-          : [`npm run build failed:\n${build.output.slice(0, 2500)}`]),
+          : [`${pmCommands.runBuild} failed:\n${build.output.slice(0, 2500)}`]),
       ];
 
       if (!lastRound && repairFiles.length > 0) {
@@ -437,7 +439,7 @@ When you have applied fixes (or cannot fix further), stop. A deterministic rebui
           producerId,
           planId,
           buildFailed
-            ? "npm run build (or npm install) failed. Assigning repair tasks to Worker — the run is not finished."
+            ? `${pmCommands.runBuild} (or ${pmCommands.cleanInstall}) failed. Assigning repair tasks to Worker — the run is not finished.`
             : `Shadow compile may succeed while the app is still wrong: ${structureIssues.length} verifier issue(s). Assigning repair tasks.`,
           "warning",
         );
@@ -454,7 +456,7 @@ When you have applied fixes (or cannot fix further), stop. A deterministic rebui
         producerId,
         planId,
         lastRound
-          ? `npm run build still does not pass after ${MAX_INTEGRATION_ROUNDS} integration rounds. The migration is not successful.`
+          ? `${pmCommands.runBuild} still does not pass after ${MAX_INTEGRATION_ROUNDS} integration rounds. The migration is not successful.`
           : "Shadow verification failed and no repair files could be assigned.",
       );
     } catch (error: unknown) {
