@@ -96,13 +96,17 @@ export async function createApiServer(
 
   app.get('/api/detect', async (req: Request, res: Response) => {
     try {
-      const { detectTechnologies } = await import('../detector/TechDetector.js');
+      const { detectTechnologies, inspectProject, detectMonorepo } = await import('../detector/ProjectDetector.js');
       const targetPath = req.query.path ? String(req.query.path) : '.';
+      const monorepo = detectMonorepo(targetPath);
+      const profiles = inspectProject(targetPath);
       const detected = detectTechnologies(targetPath);
       
       res.json({
         detected,
-        primary: detected.length > 0 ? detected[0].framework : null
+        profiles,
+        monorepo: monorepo.isMonorepo ? monorepo : null,
+        primary: profiles.length > 0 ? profiles[0].framework : null
       });
     } catch (error: unknown) {
       if (error instanceof Error) {

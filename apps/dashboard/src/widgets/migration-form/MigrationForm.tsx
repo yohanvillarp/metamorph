@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
-import { FolderOpen, Cpu, ArrowRight, AlertTriangle, Loader2, Play, CheckCircle2, Info } from 'lucide-react';
+import {
+  FolderOpen,
+  Cpu,
+  ArrowRight,
+  AlertTriangle,
+  Loader2,
+  Play,
+  CheckCircle2,
+  Info,
+  Boxes,
+  Layers,
+  ShieldCheck,
+  Code2,
+} from 'lucide-react';
 import { FolderPicker } from '@/shared/ui/FolderPicker';
 import { FRAMEWORKS } from '@/entities/migration';
-import type { DetectedTech } from '@/entities/migration';
+import type { DetectedTech, MonorepoContext } from '@/entities/migration';
 
 const API_BASE = '';
 
@@ -18,11 +31,13 @@ export const MigrationForm = ({ onStart, isStarting, startError }: MigrationForm
   const [toFw, setToFw] = useState('');
   const [detecting, setDetecting] = useState(false);
   const [detectedTech, setDetectedTech] = useState<DetectedTech[] | null>(null);
+  const [monorepo, setMonorepo] = useState<MonorepoContext | null>(null);
   const [detectError, setDetectError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!targetPath) {
       setDetectedTech(null);
+      setMonorepo(null);
       setDetectError(null);
       setFromFw('');
       return;
@@ -37,11 +52,16 @@ export const MigrationForm = ({ onStart, isStarting, startError }: MigrationForm
         if (data.error) throw new Error(data.error);
         
         setDetectedTech(data.detected);
+        setMonorepo(data.monorepo || null);
         if (data.primary) {
           setFromFw(data.primary);
         } else {
           setFromFw('');
-          setDetectError('No supported framework detected in this directory.');
+          if (data.monorepo?.packages?.length > 0) {
+            setDetectError('Monorepo detected. Please select a workspace package below to migrate.');
+          } else {
+            setDetectError('No supported framework detected in this directory.');
+          }
         }
       } catch (err: any) {
         setDetectError(err.message);
@@ -98,24 +118,92 @@ export const MigrationForm = ({ onStart, isStarting, startError }: MigrationForm
           </h3>
           <FolderPicker value={targetPath} onChange={setTargetPath} />
           
+          {/* MONOREPO WORKSPACE SELECTOR */}
+          {monorepo?.isMonorepo && monorepo.packages.length > 0 && (
+            <div className="w-full p-4 border-2 border-neo-border bg-blue-50/60 shadow-[4px_4px_0px_0px_var(--neo-shadow)] flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center justify-between border-b border-blue-200 pb-1.5">
+                <div className="flex items-center gap-2 font-mono font-bold text-xs uppercase tracking-wider text-blue-900">
+                  <Boxes size={16} className="text-blue-600" /> Monorepo detected ({monorepo.tool || 'workspaces'})
+                </div>
+                <span className="text-[11px] font-mono text-blue-700 font-bold">
+                  {monorepo.packages.length} workspace packages
+                </span>
+              </div>
+              <div className="text-xs text-blue-950 font-medium">
+                Choose a specific workspace package to target:
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {monorepo.packages.map(pkg => (
+                  <button
+                    key={pkg.absolutePath}
+                    type="button"
+                    onClick={() => setTargetPath(pkg.absolutePath)}
+                    className={`px-3 py-1.5 border-2 text-xs font-mono font-bold transition-all ${
+                      targetPath === pkg.absolutePath
+                        ? 'bg-blue-600 text-white border-blue-900 shadow-[2px_2px_0px_0px_#1e3a8a] translate-x-[1px] translate-y-[1px]'
+                        : 'bg-white text-neo-text border-neo-border hover:bg-blue-100 shadow-[2px_2px_0px_0px_var(--neo-shadow)]'
+                    }`}
+                  >
+                    <span className="font-black">{pkg.name}</span>
+                    <span className="opacity-70 ml-1.5 text-[10px]">({pkg.relativePath})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* BANNER DE DETECCIÓN */}
           {targetPath && (
             <div className="w-full animate-in fade-in slide-in-from-top-2 duration-300">
               {detecting ? (
-                <div className="p-4 border-2 border-neo-border bg-neo-primary/10 flex items-center justify-center gap-3 font-mono font-bold text-neo-primary animate-pulse">
-                  <Loader2 size={18} className="animate-spin" /> SCANNING DIRECTORY FOR FRAMEWORKS...
+                <div className="p-4 border-2 border-neo-border bg-neo-primary/10 flex items-center justify-center gap-3 font-mono font-bold text-neo-primary animate-pulse shadow-[4px_4px_0px_0px_var(--neo-shadow)]">
+                  <Loader2 size={18} className="animate-spin" /> SCANNING DIRECTORY FOR ARCHITECTURE & FRAMEWORKS...
                 </div>
               ) : detectError ? (
                 <div className="p-4 border-2 border-red-500 bg-red-100 flex items-center justify-center gap-3 font-mono font-bold text-red-700 shadow-[4px_4px_0px_0px_#ef4444]">
                   <AlertTriangle size={18} /> {detectError}
                 </div>
-              ) : hasHighConfidence && detectedTech ? (
-                <div className="p-4 border-2 border-green-500 bg-green-100 flex flex-col md:flex-row items-center justify-between gap-3 font-mono font-bold text-green-800 shadow-[4px_4px_0px_0px_#22c55e]">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 size={18} /> DETECTED: {detectedTech[0].framework.toUpperCase()}
+              ) : hasHighConfidence && detectedTech && detectedTech[0] ? (
+                <div className="p-4 border-2 border-green-500 bg-green-50 flex flex-col gap-3 font-mono font-bold text-green-900 shadow-[4px_4px_0px_0px_#22c55e]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-green-200 pb-2">
+                    <div className="flex items-center gap-2 text-base font-black">
+                      <CheckCircle2 size={20} className="text-green-600" />
+                      <span>DETECTED: {detectedTech[0].framework.toUpperCase()}</span>
+                      <span className="text-xs px-2 py-0.5 bg-green-200 text-green-800 rounded font-normal">
+                        {detectedTech[0].confidence}% Confidence
+                      </span>
+                    </div>
+
+                    {detectedTech[0].profile && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {detectedTech[0].profile.variant && detectedTech[0].profile.variant !== 'none' && (
+                          <span className="px-2 py-0.5 text-xs bg-white border border-green-400 rounded flex items-center gap-1 text-green-950 font-bold">
+                            <Layers size={13} className="text-green-700" /> {detectedTech[0].profile.variant}
+                          </span>
+                        )}
+                        {detectedTech[0].profile.bundler && detectedTech[0].profile.bundler !== 'unknown' && (
+                          <span className="px-2 py-0.5 text-xs bg-white border border-green-400 rounded flex items-center gap-1 text-green-950 font-bold">
+                            <Cpu size={13} className="text-purple-700" /> {detectedTech[0].profile.bundler}
+                          </span>
+                        )}
+                        {detectedTech[0].profile.language && (
+                          <span className="px-2 py-0.5 text-xs bg-white border border-green-400 rounded flex items-center gap-1 text-green-950 font-bold">
+                            <Code2 size={13} className="text-blue-700" /> {detectedTech[0].profile.language.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-xs opacity-70">
-                    EVIDENCE: {detectedTech[0].evidence[0]}
+
+                  {detectedTech[0].profile?.subsumedDependencies && detectedTech[0].profile.subsumedDependencies.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs text-amber-900 bg-amber-50 p-2 border border-amber-300 rounded font-mono">
+                      <ShieldCheck size={14} className="text-amber-600 shrink-0" />
+                      <span>Absorbed underlying runtime: <strong>{detectedTech[0].profile.subsumedDependencies.join(', ')}</strong></span>
+                    </div>
+                  )}
+
+                  <div className="text-xs text-green-800/80 font-normal">
+                    Evidence: {detectedTech[0].evidence.join('; ')}
                   </div>
                 </div>
               ) : detectedTech && detectedTech.length > 0 ? (
