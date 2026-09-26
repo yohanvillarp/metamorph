@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "lucide-react": "^1.43.0",
+    "lucide-react": "^1.47.0",
     "react": "^19.2.8",
     "react-dom": "^19.3.0",
     "recharts": "^3.10.1",
@@ -33,6 +33,6 @@
     "globals": "^17.11.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.70.1",
-    "vite": "^8.2.2"
+    "vite": "^8.3.0"
   }
 }
