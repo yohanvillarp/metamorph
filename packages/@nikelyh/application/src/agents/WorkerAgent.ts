@@ -12,41 +12,12 @@ import { join, leave, resolveRuntime, runLoop, sendEvent } from '../runtime';
 import { buildFileTree } from '../utils/FileTreeBuilder';
 import { buildNeighborContext } from '../utils/NeighborContext';
 import { MISSING_AFTER_WORKER, workerCompletionKind } from '../utils/workerCompletion';
+import { ConcurrencyQueue } from '../utils/ConcurrencyQueue';
 
 // Track retry counts per file to prevent infinite reject-repair loops
-const MAX_RETRIES = 2;
+const DEFAULT_MAX_RETRIES = 2;
 
-class ConcurrencyQueue {
-  private queue: Array<() => Promise<void>> = [];
-  private activeCount = 0;
-  
-  constructor(private concurrencyLimit: number) {}
-
-  async enqueue(task: () => Promise<void>) {
-    this.queue.push(task);
-    this.pump();
-  }
-
-  private async pump() {
-    if (this.activeCount >= this.concurrencyLimit || this.queue.length === 0) {
-      return;
-    }
-    const task = this.queue.shift();
-    if (task) {
-      this.activeCount++;
-      try {
-        await task();
-      } catch (error) {
-        console.error('Task error:', error);
-      } finally {
-        this.activeCount--;
-        this.pump();
-      }
-    }
-  }
-}
-
-const workerQueue = new ConcurrencyQueue(3); // Maximum 3 concurrent workers
+export const workerQueue = new ConcurrencyQueue(3);
 
 class WhenFileDiscovered extends SituationSpecification {
   isSatisfiedBy({ event }: SituationContext): boolean {
@@ -163,7 +134,9 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
   
   join(tempAgent);
 
-  const modelToUse = process.env.METAMORPH_MODEL || 'gpt-5.4';
+  const config = runtime.state.config;
+  const modelToUse = config?.model || process.env.METAMORPH_MODEL || 'gpt-5.4';
+  const timeoutMs = config?.inferenceTimeoutMs || 120000;
   
   try {
     console.log(`[WorkerAgent:${tempAgent.getId()}] Starting inference loop for ${filePath}...`);
@@ -175,18 +148,18 @@ async function startWorkerLoop(planId: string, filePath: string, prompt: string,
 
     setTimeout(async () => {
       if (!isDone) {
-        console.error(`[WorkerAgent:${tempAgent.getId()}] Inference timed out after 120s.`);
-        await repository.updateTaskStatus(planId, filePath, 'failed', 'Inference timed out after 120s');
+        console.error(`[WorkerAgent:${tempAgent.getId()}] Inference timed out after ${Math.round(timeoutMs / 1000)}s.`);
+        await repository.updateTaskStatus(planId, filePath, 'failed', `Inference timed out after ${Math.round(timeoutMs / 1000)}s`);
         sendEvent({
           type: SemanticEventName.FILE_FAILED,
           producerId: tempAgent.getId(),
           occurredAt: new Date(),
-          payload: { planId, filePath, reason: 'Inference timed out after 120s' },
+          payload: { planId, filePath, reason: `Inference timed out after ${Math.round(timeoutMs / 1000)}s` },
         }, tempAgent.getId());
         leave(tempAgent);
         resolve();
       }
-    }, 120000);
+    }, timeoutMs);
   } catch (error: unknown) {
     console.error(`[WorkerAgent:${tempAgent.getId()}] Sync error:`, error);
     if (!isDone) {
@@ -254,6 +227,10 @@ Before writing:
 3. If this is a router/bootstrap file, import an existing screen from the nearby paths — do not paste a new copy of its JSX.
 Then write the file(s). If structure must change, create/rename/delete accordingly.`;
 
+    if (runtime.state.config && workerQueue.getLimit() !== runtime.state.config.concurrency) {
+      workerQueue.setLimit(runtime.state.config.concurrency);
+    }
+
     workerQueue.enqueue(async () => {
       await startWorkerLoop(payload.planId, payload.filePath, prompt, participant as Agent);
     });
@@ -272,24 +249,24 @@ const fixRejectedFileProcessor = {
     }
     const currentRetries = retries.get(retryKey) || 0;
     
-    if (currentRetries >= MAX_RETRIES) {
-      console.warn(`[WorkerAgent] File ${payload.filePath} exceeded max retries (${MAX_RETRIES}). Marking as failed.`);
-      const runtime = resolveRuntime();
-      await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', `Exceeded max retries (${MAX_RETRIES})`);
+    const runtime = resolveRuntime();
+    const maxRetries = runtime.state.config?.maxRetries ?? DEFAULT_MAX_RETRIES;
+    if (currentRetries >= maxRetries) {
+      console.warn(`[WorkerAgent] File ${payload.filePath} exceeded max retries (${maxRetries}). Marking as failed.`);
+      await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', `Exceeded max retries (${maxRetries})`);
       retries.delete(retryKey);
       sendEvent({
         type: SemanticEventName.FILE_FAILED,
         producerId: participant.getId(),
         occurredAt: new Date(),
-        payload: { planId: payload.planId, filePath: payload.filePath, reason: `Exceeded max retries (${MAX_RETRIES})` },
+        payload: { planId: payload.planId, filePath: payload.filePath, reason: `Exceeded max retries (${maxRetries})` },
       }, participant.getId());
       return;
     }
     
     retries.set(retryKey, currentRetries + 1);
-    console.log(`[WorkerAgent] File REJECTED (attempt ${currentRetries + 1}/${MAX_RETRIES}), initiating repair loop: ${payload.filePath}`);
+    console.log(`[WorkerAgent] File REJECTED (attempt ${currentRetries + 1}/${maxRetries}), initiating repair loop: ${payload.filePath}`);
     
-    const runtime = resolveRuntime();
     const plan = await runtime.state.repository.getPlan(payload.planId);
     let prompt = `You need to FIX the file at path: ${payload.filePath}\n`;
     if (payload.source === 'integration') {

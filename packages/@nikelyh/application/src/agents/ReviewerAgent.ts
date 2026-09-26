@@ -16,38 +16,9 @@ import {
   analyzeReactToNextStructure,
   findShadowRoot,
 } from '../utils/NextMigrationHints';
+import { ConcurrencyQueue } from '../utils/ConcurrencyQueue';
 
-class ConcurrencyQueue {
-  private queue: Array<() => Promise<void>> = [];
-  private activeCount = 0;
-  
-  constructor(private concurrencyLimit: number) {}
-
-  async enqueue(task: () => Promise<void>) {
-    this.queue.push(task);
-    this.pump();
-  }
-
-  private async pump() {
-    if (this.activeCount >= this.concurrencyLimit || this.queue.length === 0) {
-      return;
-    }
-    const task = this.queue.shift();
-    if (task) {
-      this.activeCount++;
-      try {
-        await task();
-      } catch (error) {
-        console.error('Task error:', error);
-      } finally {
-        this.activeCount--;
-        this.pump();
-      }
-    }
-  }
-}
-
-const reviewerQueue = new ConcurrencyQueue(3); // Maximum 3 concurrent reviewers
+export const reviewerQueue = new ConcurrencyQueue(3);
 
 class WhenFileMigrated extends SituationSpecification {
   isSatisfiedBy({ event }: SituationContext): boolean {
@@ -64,7 +35,10 @@ class WhenReviewCompleted extends SituationSpecification {
 const reviewFileProcessor = {
   async apply({ event, participant }: SituationContext) {
     const payload = event.payload as SemanticEventPayloads.FileMigrated;
-    console.log(`[ReviewerAgent] Reviewing migrated file: ${payload.filePath}`);
+    const runtime = resolveRuntime();
+    if (runtime.state.config && reviewerQueue.getLimit() !== runtime.state.config.concurrency) {
+      reviewerQueue.setLimit(runtime.state.config.concurrency);
+    }
     
     reviewerQueue.enqueue(async () => {
       return new Promise(async (originalResolve) => {
@@ -273,7 +247,9 @@ const reviewFileProcessor = {
     
     prompt += `\n${buildNeighborContext(payload.filePath)}\nDiff or new content of the file under review:\n${payload.diff}\nCompare the diff to imported modules in the evidence. If props/exports do not match, REJECT with a specific error. You MUST respond in JSON.`;
 
-    const modelToUse = process.env.METAMORPH_REVIEWER_MODEL || process.env.METAMORPH_MODEL || 'gpt-5.4';
+    const config = runtime.state.config;
+    const modelToUse = config?.reviewerModel || config?.model || process.env.METAMORPH_REVIEWER_MODEL || process.env.METAMORPH_MODEL || 'gpt-5.4';
+    const timeoutMs = config?.inferenceTimeoutMs || 120000;
     console.log(`[ReviewerAgent:${reviewerId}] Starting inference loop for ${payload.filePath} with model ${modelToUse}...`);
 
     try {
@@ -297,20 +273,20 @@ const reviewFileProcessor = {
 
       setTimeout(async () => {
         if (!isDone) {
-          console.error(`[ReviewerAgent:${reviewerId}] ⏰ TIMEOUT after 120s for ${payload.filePath}. Model never responded.`);
+          console.error(`[ReviewerAgent:${reviewerId}] ⏰ TIMEOUT after ${Math.round(timeoutMs / 1000)}s for ${payload.filePath}. Model never responded.`);
           const { resolveRuntime } = await import('../runtime');
           const runtime = resolveRuntime();
-          await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', 'Inference timed out after 120s');
+          await runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', `Inference timed out after ${Math.round(timeoutMs / 1000)}s`);
           sendEvent({
             type: SemanticEventName.FILE_FAILED,
             producerId: tempAgent.getId(),
             occurredAt: new Date(),
-            payload: { planId: payload.planId, filePath: payload.filePath, reason: 'Inference timed out after 120s' },
+            payload: { planId: payload.planId, filePath: payload.filePath, reason: `Inference timed out after ${Math.round(timeoutMs / 1000)}s` },
           }, tempAgent.getId());
           leave(tempAgent);
           resolve();
         }
-      }, 120000);
+      }, timeoutMs);
     } catch (error: unknown) {
       console.error(`[ReviewerAgent:${reviewerId}] Sync error:`, error);
       if (!isDone) {

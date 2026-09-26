@@ -9,8 +9,8 @@ import {
 import { SemanticEventName, SemanticEventPayloads, resolvePackageManagerCommands } from "@nikelyh/domain";
 import { join, leave, resolveRuntime, runLoop, sendEvent } from "../runtime";
 
-const MAX_INTEGRATION_ROUNDS = 4;
-const REPAIR_TIMEOUT_MS = 120000;
+const DEFAULT_MAX_INTEGRATION_ROUNDS = 4;
+const DEFAULT_REPAIR_TIMEOUT_MS = 120000;
 
 class WhenIntegrationStarts extends SituationSpecification {
   isSatisfiedBy({ event }: SituationContext): boolean {
@@ -203,19 +203,20 @@ const integrationProcessor = {
 
       plan.phase = "integration";
 
+      const maxIntegrationRounds = runtime.state.config?.maxIntegrationRounds ?? DEFAULT_MAX_INTEGRATION_ROUNDS;
       const currentRound = plan.integrationRounds ?? 0;
-      if (currentRound >= MAX_INTEGRATION_ROUNDS) {
+      if (currentRound >= maxIntegrationRounds) {
         await failMigration(
           producerId,
           planId,
-          `Integration budget exhausted after ${MAX_INTEGRATION_ROUNDS} shadow build rounds. npm run build still does not pass — the run is not successful.`,
+          `Integration budget exhausted after ${maxIntegrationRounds} shadow build rounds. Build verification still does not pass — the run is not successful.`,
         );
         return;
       }
 
       plan.integrationRounds = currentRound + 1;
       await runtime.state.repository.savePlan(plan);
-      const lastRound = plan.integrationRounds >= MAX_INTEGRATION_ROUNDS;
+      const lastRound = plan.integrationRounds >= maxIntegrationRounds;
 
       const {
         ShadowWorkspace,
@@ -236,7 +237,7 @@ const integrationProcessor = {
       const pmCommands = resolvePackageManagerCommands(plan.packageManager);
 
       console.log(
-        `[IntegrationAgent] Shadow build round ${plan.integrationRounds}/${MAX_INTEGRATION_ROUNDS} in ${shadowPath}`,
+        `[IntegrationAgent] Shadow build round ${plan.integrationRounds}/${maxIntegrationRounds} in ${shadowPath}`,
       );
       log(
         producerId,
@@ -277,7 +278,7 @@ const integrationProcessor = {
           await failMigration(
             producerId,
             planId,
-            `${pmCommands.cleanInstall} failed in the shadow workspace after ${MAX_INTEGRATION_ROUNDS} integration rounds. The migration could not complete.`,
+            `${pmCommands.cleanInstall} failed in the shadow workspace after ${maxIntegrationRounds} integration rounds. The migration could not complete.`,
           );
           return;
         }
@@ -350,7 +351,9 @@ const integrationProcessor = {
           });
 
           join(tempAgent);
-          const modelToUse = process.env.METAMORPH_MODEL || "gpt-5.4";
+          const config = runtime.state.config;
+          const modelToUse = config?.model || process.env.METAMORPH_MODEL || "gpt-5.4";
+          const repairTimeoutMs = config?.inferenceTimeoutMs || DEFAULT_REPAIR_TIMEOUT_MS;
           const excerpt = build.output.slice(0, 4000);
           const prompt = `A real \`npm run build\` already failed in the shadow workspace at ${shadowPath}.
 You must deduce the fix from source, not guess. Use list_directory / read_file on the implicated files AND the modules they import. Keep existing callback/export names. If a router file was reassembled, import the existing screen instead.
@@ -382,10 +385,10 @@ When you have applied fixes (or cannot fix further), stop. A deterministic rebui
               leave(tempAgent);
               resolve();
             }
-          }, REPAIR_TIMEOUT_MS);
+          }, repairTimeoutMs);
         });
 
-        build = await runInShadowWorkspace(shadowPath, "npm run build");
+        build = await runInShadowWorkspace(shadowPath, pmCommands.runBuild);
       }
 
       const pluginCtx = {
@@ -456,7 +459,7 @@ When you have applied fixes (or cannot fix further), stop. A deterministic rebui
         producerId,
         planId,
         lastRound
-          ? `Verification build did not pass after ${MAX_INTEGRATION_ROUNDS} integration rounds. Please inspect MIGRATION.md for diagnostic details.`
+          ? `Verification build did not pass after ${maxIntegrationRounds} integration rounds. Please inspect MIGRATION.md for diagnostic details.`
           : "Shadow verification failed and no repair targets could be assigned.",
       );
     } catch (error: unknown) {

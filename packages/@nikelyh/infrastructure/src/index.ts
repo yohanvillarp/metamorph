@@ -7,3 +7,4 @@ export * from './detector/TechDetector.js';
 export * from './detector/ProjectDetector.js';
 export * from './tools/LinterTools.js';
 export * from './tools/BuildTools.js';
+export * from './config/ConfigStore.js';

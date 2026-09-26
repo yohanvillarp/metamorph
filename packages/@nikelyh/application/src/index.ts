@@ -1,4 +1,4 @@
-import { StateRepository } from '@nikelyh/domain';
+import { StateRepository, MetamorphConfig } from '@nikelyh/domain';
 import { MetamorphState, initializeRuntime, join, resolveRuntime } from './runtime';
 import { createMapperAgent } from './agents/MapperAgent';
 import { createWorkerAgent } from './agents/WorkerAgent';
@@ -15,13 +15,14 @@ import { Tool, createAgent, createHuman, SituationSpecification } from '@mozaik-
  * Bootstraps the Mozaik Application Layer.
  * @param repository The Infrastructure implementation (SQLite) injected from CLI.
  * @param tools The function tools (e.g. AST) provided by Infrastructure.
+ * @param config Optional resolved swarm runtime configuration.
  */
-export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = []) {
+export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = [], config?: MetamorphConfig) {
   registerBuiltinMigrationPlugins();
 
-  // 1. Initialize the global Mozaik runtime with our SQLite repository
+  // 1. Initialize the global Mozaik runtime with our SQLite repository and config
   initializeRuntime({
-    state: new MetamorphState(repository)
+    state: new MetamorphState(repository, config)
   });
 
   const dispatcher = createHuman({ name: 'System', capabilities: [], handlers: [] });

@@ -291,7 +291,7 @@ const draftDuringInstallProcessor = {
     log(participant.getId(), p.planId, 'Reporter is drafting MIGRATION.md while Integration runs npm install / build (one model call).');
 
     const reportAbs = `${shadowPath.replace(/\\/g, '/')}/MIGRATION.md`;
-    const modelToUse = process.env.METAMORPH_MODEL || 'gpt-5.4';
+    const modelToUse = runtime.state.config?.model || process.env.METAMORPH_MODEL || 'gpt-5.4';
     runLoop(participant.getId(), draftPrompt({ reportAbs, plan, notes: board.notes, draft }), {
       model: modelToUse,
       context: participant.getMemory().getContext(),
