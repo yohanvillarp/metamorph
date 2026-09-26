@@ -20,9 +20,12 @@ import {
   inspectProject,
   detectMonorepo,
   createCheckProjectDiagnosticsTool,
-  createRunBuildTool
+  createRunBuildTool,
+  ConfigStore,
 } from '@nikelyh/infrastructure';
 import { MigrationRunner } from '@nikelyh/application';
+import { MetamorphConfig, MOZAIK_BUNDLED_MODELS, isMozaikBundledModel } from '@nikelyh/domain';
+import { registerConfigCommand } from './commands/config.js';
 
 function logStartupContext() {
   const isDev = process.env.METAMORPH_DEV === '1';
@@ -44,10 +47,24 @@ program
 
 program
   .command('run [path]')
-  .description('Run a migration on the specified directory')
   .option('--from <source>', 'Source framework (e.g. express)')
   .option('--to <target>', 'Target framework (e.g. fastify)')
-  .action(async (targetPathArg: string | undefined, options: { from?: string; to?: string }) => {
+  .option('--model <model>', 'LLM model to use for worker agents (e.g. gpt-5.4, claude-sonnet-4-6)')
+  .option('--reviewer-model <model>', 'LLM model specifically for reviewer agent')
+  .option('--concurrency <number>', 'Number of concurrent agent workers (e.g. 5)')
+  .option('--timeout <seconds>', 'Inference timeout in seconds (e.g. 180)')
+  .option('--retries <number>', 'Maximum repair retries per file (e.g. 3)')
+  .option('--integration-rounds <number>', 'Maximum shadow build integration rounds (e.g. 4)')
+  .action(async (targetPathArg: string | undefined, options: {
+    from?: string;
+    to?: string;
+    model?: string;
+    reviewerModel?: string;
+    concurrency?: string;
+    timeout?: string;
+    retries?: string;
+    integrationRounds?: string;
+  }) => {
     logStartupContext();
     let targetPath = targetPathArg || '.';
     const { select, input } = await import('@inquirer/prompts');
@@ -126,10 +143,27 @@ program
       }
     }
 
-    console.log(chalk.blue(`\n🚀 Starting Metamorph Migration`));
-    console.log(chalk.gray(`Target: ${targetPath} | ${from} -> ${to}\n`));
+    const cliFlags: Partial<MetamorphConfig> = {};
+    if (options.model) cliFlags.model = options.model;
+    if (options.reviewerModel) cliFlags.reviewerModel = options.reviewerModel;
+    if (options.concurrency) cliFlags.concurrency = parseInt(options.concurrency, 10);
+    if (options.timeout) cliFlags.inferenceTimeoutMs = parseInt(options.timeout, 10) * 1000;
+    if (options.retries) cliFlags.maxRetries = parseInt(options.retries, 10);
+    if (options.integrationRounds) cliFlags.maxIntegrationRounds = parseInt(options.integrationRounds, 10);
 
-    if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    const resolvedConfig = ConfigStore.resolveConfig({ cwd: targetPath, cliFlags });
+
+    if (options.model && !isMozaikBundledModel(options.model)) {
+      console.log(chalk.yellow(`\n⚠️  Notice: "${options.model}" is not an officially bundled Mozaik v4 model.`));
+      console.log(chalk.gray(`Officially bundled models: ${MOZAIK_BUNDLED_MODELS.join(', ')}\n`));
+    }
+
+    console.log(chalk.blue(`\n🚀 Starting Metamorph Migration`));
+    console.log(chalk.gray(`Target: ${targetPath} | ${from} -> ${to}`));
+    console.log(chalk.gray(`Model: ${resolvedConfig.model} | Concurrency: ${resolvedConfig.concurrency} | Timeout: ${resolvedConfig.inferenceTimeoutMs / 1000}s | Retries: ${resolvedConfig.maxRetries}\n`));
+
+    const hasApiKey = process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
+    if (!hasApiKey) {
       console.log(chalk.red(`\n❌ ERROR: No LLM API key detected.`));
       console.log(chalk.yellow(`Metamorph requires an API key (OPENAI_API_KEY or ANTHROPIC_API_KEY) to power the AI Worker agents.`));
       console.log(chalk.yellow(`Execution has been blocked to prevent agents from crashing during the migration.\n`));
@@ -156,7 +190,7 @@ program
         createCheckProjectDiagnosticsTool(shadowBase),
         createRunBuildTool(shadowBase)
       ];
-      const runner = new MigrationRunner(store, tools);
+      const runner = new MigrationRunner(store, tools, resolvedConfig);
 
       const result = await runner.startMigration({
         targetPath,
@@ -356,7 +390,8 @@ program
       
       const port = await getPort({ port: desiredPort });
 
-      if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+      const hasApiKey = process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
+      if (!hasApiKey) {
         console.log(chalk.red(`\n❌ ERROR: No LLM API key detected.`));
         console.log(chalk.yellow(`Metamorph requires an API key (OPENAI_API_KEY or ANTHROPIC_API_KEY) to power the AI Worker agents.`));
         console.log(chalk.yellow(`Execution has been blocked to prevent agents from crashing during the migration.\n`));
@@ -369,6 +404,7 @@ program
         process.exit(1);
       }
       
+      const resolvedConfig = ConfigStore.resolveConfig();
       const store = new SQLiteStateStore('.metamorph');
       const shadowBase = path.resolve('.metamorph/shadow');
       const tools = [
@@ -381,7 +417,7 @@ program
         createCheckProjectDiagnosticsTool(shadowBase),
         createRunBuildTool(shadowBase)
       ];
-      const runner = new MigrationRunner(store, tools);
+      const runner = new MigrationRunner(store, tools, resolvedConfig);
 
       const app = await createApiServer(store, runner);
 
@@ -404,5 +440,7 @@ program
       process.exit(1);
     }
   });
+
+registerConfigCommand(program);
 
 program.parse(process.argv);
