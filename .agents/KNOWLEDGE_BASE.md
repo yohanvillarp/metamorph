@@ -56,32 +56,49 @@ Pure core with **zero I/O dependencies**. Defines business rules, contracts, and
 ### 3.2. `packages/@nikelyh/application`
 Orchestration layer integrating the Mozaik v4 runtime (`@mozaik-ai/core`):
 * **Blackboard State (`src/runtime.ts`)**: `MetamorphState` managing journals, retry counters, and coordination locks.
-* **Agent Swarm (`src/agents/`)**:
+* **Agent Swarm (`src/agents/`)**: Vertical feature slices with dedicated prompts, runners, and validators:
   1. `MapperAgent`: Discovers source files, initializes SQLite tasks, and emits `file.discovered`.
-  2. `WorkerAgent`: Concurrency-bounded (`limit: 3`) ephemeral worker performing code transformations with catalog hints and `NeighborContext`.
-  3. `ReviewerAgent`: Concurrency-bounded (`limit: 3`) ephemeral reviewer running AST syntax checks and semantic contract validations.
+  2. `WorkerAgent` (`src/agents/worker/`): Concurrency-bounded (`limit: 3`) ephemeral worker performing code transformations with catalog hints, `NeighborContext`, `WorkerPromptBuilder`, and `WorkerInferenceRunner`.
+  3. `ReviewerAgent` (`src/agents/reviewer/`): Concurrency-bounded (`limit: 3`) ephemeral reviewer running AST syntax checks (`SyntaxValidator`), structure checks (`StructureVerifier`), and semantic contract validations (`ReviewerInferenceRunner`).
   4. `PackageManagerAgent`: Mutates `package.json` in memory and on disk without running host subprocesses.
   5. `CoordinatorAgent`: Watchdog polling every 8s to detect when all tasks settle before triggering shadow integration.
   6. `IntegrationAgent`: Runs clean installs and compilation builds inside the sandbox.
   7. `ReporterAgent`: Generates `MIGRATION.md` with dynamic commands.
+  8. `AgentRegistry`: Dynamic agent lifecycle management supporting `--disable-agents`, zero-token fallback modes, and server offline detection.
+* **Vertical Capability Slices**:
+  - `src/concurrency/`: `ConcurrencyQueue` limiting simultaneous LLM inferences.
+  - `src/context/`: `FileTreeBuilder`, `NeighborContext` providing cross-file context.
+  - `src/analysis/`: Diagnostic and heuristic tools (`NextMigrationHints`, `FrontendRuntimeHints`, `classifyMissingFile`, `workerCompletion`).
+  - `src/migration/plugins/`: Deterministic target validation plugins for frontend (`target-vue`, `target-svelte`, `target-angular`) and backend (`target-express`, `target-fastify`, `target-nestjs`).
 
 ### 3.3. `packages/@nikelyh/infrastructure`
 Secondary adapter implementations:
-* **Persistence (`src/db/SQLiteStateStore.ts`)**: Native Node.js `node:sqlite` (`DatabaseSync`) storing plans, tasks, and telemetry events with automatic `ALTER TABLE` schema evolution.
+* **Persistence (`src/db/`)**:
+  - `SQLiteStateStore.ts`: Native Node.js `node:sqlite` (`DatabaseSync`) storing plans, tasks, and telemetry events with automatic `ALTER TABLE` schema evolution.
+  - `CostAccountingStore.ts`: Persistent token usage tracking (prompt, completion, model) and live financial cost estimation.
+* **Configuration (`src/config/ConfigStore.ts`)**: Cascading hierarchical configuration engine resolving `CLI flags` > `process.env` > `.metamorphrc.json` > `~/.metamorphrc.json` > defaults.
 * **Workspace (`src/workspace/ShadowWorkspace.ts`)**: Sandboxed cloning, boundary checking (`assertSandbox`), and git integration (`MigrationIntegrator.ts`).
 * **Project Intelligence Engine (`src/detector/`)**:
   - `WorkspaceResolver`: Monorepo root discovery.
   - `ManifestInspector`: Weighted dependency analysis.
-  - `StructureInspector`: Physical router variant detection.
+  - `StructureInspector`: Physical router and entrypoint variant detection.
   - `SubsumptionEngine`: Directed Acyclic Graph (DAG) resolving meta-framework collisions.
 
-### 3.4. `apps/dashboard`
+### 3.4. `packages/@nikelyh/cli`
+Primary driving adapter with modular command slices (`src/commands/`):
+* `commands/run/`: Migration orchestration execution, prompt/flag parsing (`run.options.ts`, `run.presenter.ts`, `run.command.ts`).
+* `commands/config/`: Interactive LLM configuration prompts and tests.
+* `commands/ui/`: Embedded dashboard server lifecycle and auto-browser opening.
+* `commands/apply/`, `commands/rollback/`, `commands/reset/`, `commands/detect/`, `commands/list/`: Discrete lifecycle commands.
+
+### 3.5. `apps/dashboard`
 React 18/19 SPA following **Feature-Sliced Design (FSD)**:
 * `shared` → `entities` → `features` → `widgets` → `pages` → `app`.
 * **Zero Emojis**: Employs `lucide-react` vector icons exclusively.
 * **Real-Time Telemetry**: Connects to `/api/events` via Server-Sent Events (SSE).
 
 ---
+
 
 ## 4. Supported Migration Matrix
 
@@ -172,3 +189,23 @@ Metamorph enforces standardized PR templates located in `.github/PULL_REQUEST_TE
 - `architecture.md`: Structural refactors and SQLite auto-migrations.
 - `perf_optimization.md`: Bottlenecks, profiling, and benchmark comparisons.
 - `PULL_REQUEST_TEMPLATE.md`: General/default fallback.
+
+---
+
+## 7. LLM Token Accounting & Real-time Cost Estimation Engine (Issue #46)
+
+Metamorph provides built-in, local-first token consumption tracking and financial cost estimation adhering to strict Hexagonal separation:
+1. **Domain (`@nikelyh/domain`)**:
+   - `TokenUsage` (`promptTokens`, `completionTokens`, `totalTokens`).
+   - `ModelPricingTier` and `calculateTokenCost()`: Baseline pricing for `MOZAIK_BUNDLED_MODELS` with `$0.00 USD` fallback for local models (Ollama/vLLM) and custom pricing overrides.
+   - `SemanticEventName.TOKENS_CONSUMED` with typed payload.
+   - `StateRepository` port extended with `recordTokenUsage` and `getCostSummary`.
+2. **Infrastructure (`@nikelyh/infrastructure`)**:
+   - Auto-migrated `token_usage` table and `idx_token_usage_run` index in `.metamorph/history.db` using `node:sqlite` (`DatabaseSync`).
+   - `GET /api/cost/:runId` endpoint in `createApiServer()`.
+3. **Application (`@nikelyh/application`)**:
+   - `TokenAccountingService`: Calculates costs deterministically and emits `tokens.consumed`.
+   - Intercepts `inference.completed` and `model.answer` in `WorkerInferenceRunner` and `ReviewerInferenceRunner`.
+4. **Presentation (CLI & Web Dashboard)**:
+   - CLI: `presentCostSummary()` prints total tokens, prompt/completion breakdown, estimated cost in USD, and agent role distribution.
+   - Web Dashboard: `<CostTracker />` widget in the Overview tab with `lucide-react` vector icons (`Coins`, `Cpu`, `Zap`, `Activity`), strictly zero emojis, and Neo-brutalist styling.

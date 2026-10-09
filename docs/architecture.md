@@ -396,10 +396,13 @@ metamorph/
                     driving/        MigrationCommand (primary port)
             application/            Agents and orchestration logic
                 src/
-                    agents/         Mapper, Worker, Reviewer, PackageManager,
-                                    Coordinator, Integration, Reporter
+                    agents/         Vertical slices: worker/, reviewer/, coordinator/,
+                                    integration/, mapper/, package-manager/, reporter/
+                    concurrency/    ConcurrencyQueue (bounded task execution)
+                    context/        FileTreeBuilder, NeighborContext
+                    analysis/       NextMigrationHints, FrontendRuntimeHints, classifyMissingFile
                     migration/      Plugins, validators, registry
-                    utils/          FileTreeBuilder, NeighborContext, NextMigrationHints
+                    utils/          Backward-compatibility re-exports
             infrastructure/         Concrete adapters
                 src/
                     db/             SQLiteStateStore (node:sqlite)
@@ -408,6 +411,9 @@ metamorph/
                     tools/          AstTools (ts-morph), BuildTools, LinterTools
                     server/         Express REST API for Dashboard
             cli/                    Commander-based CLI entry point
+                src/
+                    commands/       Modular slices (run/, config/, ui/, apply/, rollback/, etc.)
+                    index.ts        Lean CLI registration (< 40 lines)
     .github/
         PULL_REQUEST_TEMPLATE/      Specialized PR templates (feature, bugfix, migration, swarm, etc.)
         PULL_REQUEST_TEMPLATE.md    Default standard Pull Request template

@@ -20,8 +20,11 @@ Metamorph is a CLI tool powered by [Mozaik](https://github.com/jigjoy-ai/mozaik)
 
 ## Features
 
-- **Project Intelligence Engine (PIE)** -- Autonomously detects project architecture, frameworks, and monorepo workspace topologies (Turborepo, pnpm workspaces, npm/yarn workspaces, Lerna).
+- **Project Intelligence Engine (PIE)** -- Autonomously detects project architecture, frameworks, dynamic entrypoints, and monorepo workspace topologies (Turborepo, pnpm workspaces, npm/yarn workspaces, Lerna).
 - **Polymorphic Package Manager (PPME)** -- Automatically detects and adapts to your chosen package manager (`npm`, `pnpm`, `yarn`, `bun`) without host process leakage.
+- **Structural Validation Plugins** -- Deterministic shadow workspace assertions, scaffold verifications, and repair heuristics for both frontend (Vue, Svelte, Angular) and backend (Express, Fastify, NestJS) migration targets.
+- **Cascading Configuration System** -- Tiered configuration management via `metamorph config` across CLI flags, env vars, `.metamorphrc.json`, and global user defaults.
+- **Token Accounting & Real-Time Cost Estimation** -- Live token tracking per model and estimated inference costs persisted in SQLite and displayed in the dashboard.
 - **Multi-Agent Concurrency** -- Utilizes Mapper, Worker, Reviewer, Integration, and Coordinator agents to migrate code in parallel.
 - **Zero Risk (Shadow Workspace)** -- All migrations happen in an isolated `.metamorph/shadow` workspace. Your original code is completely untouched until you explicitly approve and apply the changes.
 - **Shadow Build Verification** -- Every migration is validated with your package manager (`npm`, `pnpm`, `yarn`, `bun`) and verification build inside the shadow workspace before completion.
@@ -96,6 +99,25 @@ Clear the local database and reset all events:
 
 ```bash
 metamorph reset
+```
+
+### 5. Managing Configuration
+
+Metamorph provides a tiered configuration system that resolves settings across CLI flags, environment variables, local `.metamorphrc.json`, and global user config (`~/.metamorphrc.json`):
+
+```bash
+# View all effective configuration values and their sources
+metamorph config list
+
+# Set a persistent config value (e.g. LLM model or concurrency)
+metamorph config set model "gpt-4o"
+metamorph config set concurrency 3
+
+# Disable specific swarm agents for specialized runs
+metamorph config set disabledAgents "reporter"
+
+# Inspect the resolved config path
+metamorph config path
 ```
 
 ### Utility Commands

@@ -1,4 +1,5 @@
 import { MigrationPlan, TaskStatus } from '../entities/MigrationPlan';
+import { TokenUsageRecord, MigrationCostSummary } from '../entities/TokenUsage';
 
 /**
  * Secondary Port:
@@ -36,6 +37,16 @@ export interface StateRepository {
    * Retrieves all logged events.
    */
   getEvents(): Promise<Array<{ id: number; eventName: string; payload: Record<string, unknown>; timestamp: Date }>>;
+
+  /**
+   * Persists an LLM token consumption record for cost tracking and financial auditing.
+   */
+  recordTokenUsage(record: TokenUsageRecord): Promise<void>;
+
+  /**
+   * Aggregates and retrieves the full cost and token summary for a specific migration run.
+   */
+  getCostSummary(runId: string): Promise<MigrationCostSummary>;
 
   /**
    * Clears the current state to allow starting a new migration.

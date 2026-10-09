@@ -27,7 +27,7 @@ Follow this systematic checklist when adding a new source/target migration pair:
    - `filesToScaffold` (in `packages/@nikelyh/domain/src/entities/catalogs/scaffolds.ts` if reusable).
 
 ## Step 3: CLI & API Registration
-1. In `packages/@nikelyh/cli/src/index.ts`, update `SUPPORTED_MIGRATIONS` mapping.
+1. In `packages/@nikelyh/cli/src/commands/run/run.options.ts`, update `SUPPORTED_MIGRATIONS` mapping.
 2. Ensure the dashboard `packages/@nikelyh/infrastructure/src/server/api.ts` can resolve the new pair via `resolveMigrationCatalog(from, to)`.
 
 ## Step 4: Verification

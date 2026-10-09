@@ -50,6 +50,20 @@ export async function createApiServer(
     }
   });
 
+  app.get('/api/cost/:runId', async (req: Request, res: Response) => {
+    try {
+      const runId = String(req.params.runId);
+      const summary = await store.getCostSummary(runId);
+      res.json(summary);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: String(error) });
+      }
+    }
+  });
+
   app.get('/api/browse', async (req: Request, res: Response) => {
     try {
       const { readdirSync, statSync } = await import('node:fs');

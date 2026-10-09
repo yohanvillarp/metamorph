@@ -49,4 +49,18 @@ describe('CLI Contract & Build Integrity', () => {
     assert.ok(fs.existsSync(publicDir), 'Expected dist/public to exist in CLI build');
     assert.ok(fs.existsSync(indexHtml), 'Expected dist/public/index.html to exist');
   });
+
+  test('src/index.ts registers config command and run command options', () => {
+    const indexContent = fs.readFileSync(indexPath, 'utf-8');
+    assert.ok(indexContent.includes('registerConfigCommand(program)'), 'Expected registerConfigCommand to be called');
+    assert.ok(indexContent.includes('registerRunCommand(program)'), 'Expected registerRunCommand to be called');
+
+    const runOptionsPath = path.join(cliDir, 'src/commands/run/run.options.ts');
+    const runOptionsContent = fs.readFileSync(runOptionsPath, 'utf-8');
+    assert.ok(runOptionsContent.includes('--model <model>'), 'Expected --model option in run command');
+    assert.ok(runOptionsContent.includes('--concurrency <number>'), 'Expected --concurrency option in run command');
+    assert.ok(runOptionsContent.includes('--timeout <seconds>'), 'Expected --timeout option in run command');
+    assert.ok(runOptionsContent.includes('--retries <number>'), 'Expected --retries option in run command');
+  });
 });
+

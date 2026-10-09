@@ -97,7 +97,7 @@ sequenceDiagram
 Long-running agent systems suffer from memory leaks if dynamic participants linger. Metamorph guarantees deterministic participant disposal:
 
 ```typescript
-// Ephemeral Worker pattern in WorkerAgent.ts:
+// Ephemeral Worker pattern in agents/worker/WorkerInferenceRunner.ts:
 const participant = await runtime.createParticipant(`Worker-${Date.now()}`);
 try {
   await transformFileWithLLM(participant, taskContext);

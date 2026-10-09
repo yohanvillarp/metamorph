@@ -30,11 +30,14 @@
 
 **Metamorph** is an advanced CLI tool designed to completely automate complex architectural shifts and framework migrations. Instead of relying on regular expressions or manual AST transformations, Metamorph orchestrates a swarm of specialized Agents (Mapper, Worker, Reviewer, and PackageManager) to semantically rewrite your code.
 
-- **Project Intelligence Engine (PIE)**: Autonomously maps complex codebases, heuristics, and monorepos (Turborepo, pnpm workspaces, npm/yarn workspaces, Lerna).
+- **Project Intelligence Engine (PIE)**: Autonomously maps complex codebases, heuristics, dynamic entrypoints, and monorepos (Turborepo, pnpm workspaces, npm/yarn workspaces, Lerna).
 - **Polymorphic Package Manager Engine (PPME)**: Native, lockfile-aware execution adapting cleanly to `npm`, `pnpm`, `yarn`, and `bun`.
+- **Structural Validation Plugins**: Deterministic shadow workspace assertions and repair heuristics for both frontend (Vue, Svelte, Angular) and backend (Express, Fastify, NestJS) migration targets.
+- **Cascading Configuration System**: Unified hierarchical settings resolution across CLI flags, environment variables, local `.metamorphrc.json`, and global user config (`~/.metamorphrc.json`).
+- **Token Accounting & Cost Estimation**: Live granular token telemetry and cost estimation persisted in SQLite and streamed to the dashboard.
 - **Zero Risk (Shadow Workspace)**: All file mutations and builds occur inside an isolated sandbox (`.metamorph/shadow/<runId>`). Your original code is never touched until you review and apply.
 - **Shadow Verification Build**: Migrations are strictly compiled and verified before completion.
-- **Real-Time Visual Telemetry**: Monitor swarm operations, review feedback, and build diagnostics in real-time via the built-in React dashboard.
+- **Real-Time Visual Telemetry**: Monitor swarm operations, review feedback, cost metrics, and build diagnostics in real-time via the built-in React dashboard.
 
 ## System Architecture
 
@@ -111,12 +114,13 @@ metamorph ui
 
 ### Other Commands
  
-- `metamorph run [options]`: Runs an automated migration (e.g. `--from <src> --to <target> --workspace <pkg>`).
+- `metamorph run [options]`: Runs an automated migration (e.g. `--from <src> --to <target> --workspace <pkg> --disable-agents <list>`).
+- `metamorph config <get|set|list|path>`: Manages persistent cascading configuration (model, concurrency, timeout, retries, disabled agents).
 - `metamorph detect [path]`: Detects frameworks, libraries, package managers, and monorepo workspaces.
 - `metamorph apply <runId> [targetPath]`: Applies a completed migration to your repository, creating a new git branch.
 - `metamorph rollback <runId>`: Discards an unapplied migration and cleans up the shadow workspace.
 - `metamorph list`: Lists all migration history.
-- `metamorph reset`: Clears all migration history and events from the local database.
+- `metamorph reset`: Clears all migration history, cost telemetry, and events from the local database.
 
 ## Supported Migrations
 

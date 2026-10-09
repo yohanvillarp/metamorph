@@ -9,6 +9,7 @@ import {
 } from '@mozaik-ai/core';
 import { resolveRuntime, sendEvent } from '../runtime';
 import { SemanticEventName, SemanticEventPayloads, resolveMigrationCatalog } from '@nikelyh/domain';
+import { adaptTypeScriptConfig, adaptProjectScripts } from '../analysis/projectConfigAdapter';
 
 /**
  * Specification to match the MIGRATION_STARTED event on the bus.
@@ -151,6 +152,9 @@ const managePackagesProcessor = {
           }
         }
 
+        // Dynamically adapt build, start, and dev scripts based on project structure and entry point
+        adaptProjectScripts(pkg, shadowDir, plan.profile.target);
+
         fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
         console.log(`[PackageManagerAgent] Updated package.json dependencies directly (no npm subprocess).`);
 
@@ -160,8 +164,20 @@ const managePackagesProcessor = {
           occurredAt: new Date(),
           payload: { planId: payload.planId, message: 'Dependencies updated in package.json: target framework libraries and build scripts configured.', level: 'info' }
         }, participant.getId());
+
+        // 3. Dynamically adapt or scaffold tsconfig.json compiler options for target framework
+        const tsResult = adaptTypeScriptConfig(shadowDir, plan.profile.target);
+        if (tsResult.modified) {
+          console.log(`[PackageManagerAgent] ${tsResult.created ? 'Scaffolded' : 'Adapted'} tsconfig.json compilerOptions for target ${plan.profile.target}.`);
+          sendEvent({
+            type: SemanticEventName.SYSTEM_LOG as any,
+            producerId: participant.getId(),
+            occurredAt: new Date(),
+            payload: { planId: payload.planId, message: `TypeScript configuration adapted for target ${plan.profile.target}.`, level: 'info' }
+          }, participant.getId());
+        }
       } catch (err) {
-        console.error(`[PackageManagerAgent] Error editing package.json:`, err);
+        console.error(`[PackageManagerAgent] Error editing package.json or tsconfig.json:`, err);
       }
     } else {
       console.log(`[PackageManagerAgent] No package.json found at ${packageJsonPath}`);

@@ -221,4 +221,77 @@ describe('Project Intelligence Engine (ProjectDetector)', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('scores Express with devPackageKeys (@types/express) achieving parity confidence', () => {
+    const dir = createTempDir('express-dev');
+    try {
+      writeFileSync(
+        join(dir, 'package.json'),
+        JSON.stringify({
+          name: 'express-ts-api',
+          dependencies: { express: '^4.19.2' },
+          devDependencies: { '@types/express': '^4.17.21' },
+        })
+      );
+      mkdirSync(join(dir, 'src'), { recursive: true });
+      writeFileSync(join(dir, 'src', 'app.ts'), 'import express from "express";');
+
+      const profiles = inspectProject(dir);
+      assert.ok(profiles.length > 0);
+      assert.equal(profiles[0].framework, 'express');
+      assert.ok(profiles[0].confidence >= 75, `Expected confidence >= 75, got ${profiles[0].confidence}`);
+      assert.ok(profiles[0].evidence.some(e => e.includes('@types/express')));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('scores Fastify with devPackageKeys (fastify-plugin) achieving parity confidence', () => {
+    const dir = createTempDir('fastify-dev');
+    try {
+      writeFileSync(
+        join(dir, 'package.json'),
+        JSON.stringify({
+          name: 'fastify-api',
+          dependencies: { fastify: '^4.26.0' },
+          devDependencies: { 'fastify-plugin': '^4.5.1' },
+        })
+      );
+      mkdirSync(join(dir, 'src'), { recursive: true });
+      writeFileSync(join(dir, 'src', 'server.ts'), 'import Fastify from "fastify";');
+
+      const profiles = inspectProject(dir);
+      assert.ok(profiles.length > 0);
+      assert.equal(profiles[0].framework, 'fastify');
+      assert.ok(profiles[0].confidence >= 75, `Expected confidence >= 75, got ${profiles[0].confidence}`);
+      assert.ok(profiles[0].evidence.some(e => e.includes('fastify-plugin')));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('scores React SPA with .tsx files awarding source characteristic bonus', () => {
+    const dir = createTempDir('react-spa');
+    try {
+      writeFileSync(
+        join(dir, 'package.json'),
+        JSON.stringify({
+          name: 'custom-react-spa',
+          dependencies: { react: '^18.2.0', 'react-dom': '^18.2.0' },
+        })
+      );
+      mkdirSync(join(dir, 'src'), { recursive: true });
+      writeFileSync(join(dir, 'src', 'App.tsx'), 'export function App() { return <div>App</div>; }');
+      writeFileSync(join(dir, 'src', 'index.tsx'), 'import { App } from "./App";');
+
+      const profiles = inspectProject(dir);
+      assert.ok(profiles.length > 0);
+      assert.equal(profiles[0].framework, 'react');
+      assert.ok(profiles[0].confidence >= 70, `Expected confidence >= 70, got ${profiles[0].confidence}`);
+      assert.ok(profiles[0].evidence.some(e => e.includes('.tsx/.jsx file(s)')));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
+

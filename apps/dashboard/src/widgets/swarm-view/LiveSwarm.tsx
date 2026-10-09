@@ -1,4 +1,5 @@
 import { SWARM_AGENTS, classifySwarmAgent, type SwarmAgentId } from '@/entities/migration/agents';
+import { type MigrationEventItem } from '@/entities/migration';
 import { useMemo } from 'react';
 
 type FileStage = 'queued' | 'working' | 'reviewing' | 'done' | 'failed';
@@ -18,7 +19,7 @@ function stageFromTask(status: string, eventStage?: FileStage): FileStage {
   return 'queued';
 }
 
-function eventStageForFile(events: any[], filePath: string): FileStage | undefined {
+function eventStageForFile(events: MigrationEventItem[], filePath: string): FileStage | undefined {
   const related = events.filter((evt) => String(evt.payload?.filePath ?? '') === filePath);
   let stage: FileStage | undefined;
   for (const evt of [...related].reverse()) {
@@ -37,7 +38,7 @@ function shortName(filePath: string) {
 }
 
 interface LiveSwarmProps {
-  events: any[];
+  events: MigrationEventItem[];
   tasks: Array<{ filePath: string; status: string; error?: string }>;
   activeAgent: SwarmAgentId | null;
   isIntegrating: boolean;

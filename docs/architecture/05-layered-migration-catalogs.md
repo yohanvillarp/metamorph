@@ -40,12 +40,14 @@ Located in `packages/@nikelyh/domain/src/entities/catalogs/compose.ts`, the reso
 
 ---
 
-## 3. Structural Verifiers
+## 3. Structural Verifiers & Target Validation Plugins
 
-Before running expensive compilation builds in the shadow workspace, Metamorph runs static structure verifiers:
+Before running expensive compilation builds in the shadow workspace, Metamorph runs static structure verifiers and dedicated target validation plugins (`TargetValidationPlugin`):
 - **Router Collision Guard**: Prevents leaving legacy `pages/index.tsx` files when migrating to Next.js App Router (`app/page.tsx`).
 - **Root Layout Verification**: Asserts that `app/layout.tsx` contains mandatory `<html>` and `<body>` tags.
 - **Public Export Guard**: Verifies with `ts-morph` that public function and component exports match original signatures so neighbor imports do not break.
+- **Frontend Target Validation Plugins** (`target-vue`, `target-svelte`, `target-angular`): Validates component structure, template entrypoints (`index.html`), and bundler configurations.
+- **Backend Target Validation Plugins** (`target-express`, `target-fastify`, `target-nestjs`): Enforces bootstrap entrypoints (`src/main.ts`, `src/app.ts`, `server.ts`), scaffold artifacts (`nest-cli.json`), and repair heuristics for backend runtime dependencies before running shadow installs.
 
 ---
 

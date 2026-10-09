@@ -14,8 +14,18 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "check:architecture": "node scripts/verify-architecture.mjs",
+    "bump": "node scripts/bump-version.mjs",
+    "bump:patch": "node scripts/bump-version.mjs patch",
+    "bump:minor": "node scripts/bump-version.mjs minor",
+    "bump:major": "node scripts/bump-version.mjs major",
     "changeset": "changeset",
     "release": "turbo run build && changeset publish"
+  },
+  "lint-staged": {
+    "apps/dashboard/**/*.{ts,tsx}": [
+      "npm --prefix apps/dashboard run lint"
+    ]
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
@@ -25,6 +35,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "husky": "^9.0.11",
+    "lint-staged": "^17.6.0",
     "turbo": "latest"
   }
 }

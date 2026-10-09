@@ -1,5 +1,5 @@
 import { defineRuntime, RuntimeState } from '@mozaik-ai/core';
-import { StateRepository } from '@nikelyh/domain';
+import { StateRepository, MetamorphConfig, DEFAULT_METAMORPH_CONFIG } from '@nikelyh/domain';
 
 export interface ReportNote {
   filePath: string;
@@ -26,9 +26,11 @@ export class MetamorphState extends RuntimeState {
   readonly integrationLocks = new Set<string>();
   readonly retryCounts = new Map<string, number>();
   readonly integrationWatchdogs = new Map<string, ReturnType<typeof setInterval>>();
+  config: MetamorphConfig;
 
-  constructor(public readonly repository: StateRepository) {
+  constructor(public readonly repository: StateRepository, config?: MetamorphConfig) {
     super();
+    this.config = config ? { ...config } : { ...DEFAULT_METAMORPH_CONFIG };
   }
 
   journal(planId: string): PlanJournal {

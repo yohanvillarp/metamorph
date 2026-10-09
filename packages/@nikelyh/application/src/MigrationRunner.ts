@@ -1,5 +1,5 @@
-import { randomUUID } from 'crypto';
-import { StateRepository, MigrationPlan, SemanticEventName, SemanticEventPayloads, PackageManagerType } from '@nikelyh/domain';
+import { randomUUID } from 'node:crypto';
+import { StateRepository, MigrationPlan, SemanticEventName, SemanticEventPayloads, PackageManagerType, MetamorphConfig } from '@nikelyh/domain';
 import { ShadowWorkspace, inspectManifest } from '@nikelyh/infrastructure';
 import { Tool } from '@mozaik-ai/core';
 import { bootstrapMetamorph } from './index';
@@ -27,11 +27,13 @@ export class MigrationRunner {
   private store: StateRepository;
   private tools: Tool[];
   public readonly workspace: ShadowWorkspace;
+  private config?: MetamorphConfig;
   private initialized = false;
 
-  constructor(store: StateRepository, tools: Tool[]) {
+  constructor(store: StateRepository, tools: Tool[], config?: MetamorphConfig) {
     this.store = store;
     this.tools = tools;
+    this.config = config;
     this.workspace = new ShadowWorkspace();
   }
 
@@ -41,8 +43,10 @@ export class MigrationRunner {
    */
   private ensureInitialized() {
     if (!this.initialized) {
-      bootstrapMetamorph(this.store, this.tools);
+      bootstrapMetamorph(this.store, this.tools, this.config);
       this.initialized = true;
+    } else if (this.config) {
+      resolveRuntime().state.config = { ...this.config };
     }
   }
 
@@ -100,6 +104,23 @@ export class MigrationRunner {
       },
       dispatcherId
     );
+
+    if (this.config?.disabledAgents && this.config.disabledAgents.length > 0) {
+      sendEvent(
+        {
+          type: SemanticEventName.SYSTEM_LOG as any,
+          producerId: dispatcherId,
+          occurredAt: new Date(),
+          payload: {
+            planId,
+            message: `Swarm initialized with disabled agents: ${this.config.disabledAgents.join(', ')}`,
+            disabledAgents: this.config.disabledAgents,
+            level: 'info',
+          },
+        },
+        dispatcherId
+      );
+    }
 
     return { planId, shadowPath, runId };
   }

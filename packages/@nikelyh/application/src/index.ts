@@ -1,13 +1,7 @@
-import { StateRepository } from '@nikelyh/domain';
+import { StateRepository, MetamorphConfig } from '@nikelyh/domain';
 import { MetamorphState, initializeRuntime, join, resolveRuntime } from './runtime';
-import { createMapperAgent } from './agents/MapperAgent';
-import { createWorkerAgent } from './agents/WorkerAgent';
-import { createReviewerAgent } from './agents/ReviewerAgent';
-import { createPackageManagerAgent } from './agents/PackageManagerAgent';
-import { createCoordinatorAgent } from './agents/CoordinatorAgent';
-import { createReporterAgent } from './agents/ReporterAgent';
-import { createIntegrationAgent } from './agents/IntegrationAgent';
 import { registerBuiltinMigrationPlugins } from './migration/plugins';
+import { AgentRegistry } from './agents/registry/AgentRegistry';
 
 import { Tool, createAgent, createHuman, SituationSpecification } from '@mozaik-ai/core';
 
@@ -15,13 +9,14 @@ import { Tool, createAgent, createHuman, SituationSpecification } from '@mozaik-
  * Bootstraps the Mozaik Application Layer.
  * @param repository The Infrastructure implementation (SQLite) injected from CLI.
  * @param tools The function tools (e.g. AST) provided by Infrastructure.
+ * @param config Optional resolved swarm runtime configuration.
  */
-export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = []) {
+export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = [], config?: MetamorphConfig) {
   registerBuiltinMigrationPlugins();
 
-  // 1. Initialize the global Mozaik runtime with our SQLite repository
+  // 1. Initialize the global Mozaik runtime with our SQLite repository and config
   initializeRuntime({
-    state: new MetamorphState(repository)
+    state: new MetamorphState(repository, config)
   });
 
   const dispatcher = createHuman({ name: 'System', capabilities: [], handlers: [] });
@@ -50,7 +45,7 @@ export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = 
             const repository = runtime.state.repository;
             
             // Only log our semantic events, ignore internal 'inference.*' noise
-            if (event.type.includes('migration') || event.type.includes('file') || event.type.includes('phase') || event.type.includes('system')) {
+            if (event.type.includes('migration') || event.type.includes('file') || event.type.includes('phase') || event.type.includes('system') || event.type.includes('tokens')) {
               await repository.logEvent(event.type, { 
                 ...(event.payload as Record<string, unknown>), 
                 producerId: event.producerId 
@@ -63,34 +58,31 @@ export function bootstrapMetamorph(repository: StateRepository, tools: Tool[] = 
   });
   join(loggerAgent);
 
-  // 2. Instantiate our agents
-  const mapper = createMapperAgent();
-  const worker = createWorkerAgent(tools);
-  const reviewer = createReviewerAgent(tools);
-  const packageManager = createPackageManagerAgent();
-  const coordinator = createCoordinatorAgent();
-  const reporterTools = tools.filter((tool) => tool.name === 'read_file' || tool.name === 'write_file' || tool.name === 'list_directory');
-  const reporter = createReporterAgent(reporterTools);
-  const integrationAgent = createIntegrationAgent(tools);
+  // 2. Instantiate and join our swarm agents via AgentRegistry
+  const { agentsToJoin, disabledAgents } = AgentRegistry.resolveSwarmAgents({ tools, config });
+  for (const agent of agentsToJoin) {
+    join(agent);
+  }
 
-  join(mapper);
-  join(worker);
-  join(reviewer);
-  join(packageManager);
-  join(coordinator);
-  join(reporter);
-  join(integrationAgent);
+  const joinedNames = agentsToJoin.map((a) => a.getManifest().name).join(', ');
+  console.log(`[App] Mozaik initialized. Agents joined: ${joinedNames}`);
+  if (disabledAgents.length > 0) {
+    console.log(`[App] Disabled agents: ${disabledAgents.map((d) => `${d.id} (${d.mode})`).join(', ')}`);
+  }
 
-  console.log(`[App] Mozaik initialized. Agents joined: Mapper, Worker, Reviewer, PackageManager, Coordinator, Reporter, IntegrationAgent`);
+  const mapperAgent = agentsToJoin.find((a) => a.getManifest().name === 'Mapper');
+  const workerAgent = agentsToJoin.find((a) => a.getManifest().name === 'Worker');
+  const reviewerAgent = agentsToJoin.find((a) => a.getManifest().name.startsWith('Reviewer'));
 
   return {
-    mapperId: mapper.getId(),
-    workerId: worker.getId(),
-    reviewerId: reviewer.getId(),
+    mapperId: mapperAgent?.getId() || '',
+    workerId: workerAgent?.getId() || '',
+    reviewerId: reviewerAgent?.getId() || '',
   };
 }
 
 export * from './runtime';
+export * from './agents/registry/AgentRegistry';
 export * from './agents/MapperAgent';
 export * from './agents/WorkerAgent';
 export * from './agents/ReviewerAgent';
@@ -98,4 +90,7 @@ export * from './agents/PackageManagerAgent';
 export * from './agents/CoordinatorAgent';
 export * from './agents/ReporterAgent';
 export * from './agents/IntegrationAgent';
+export * from './agents/AccountingAgent';
+export * from './accounting/TokenAccountingService';
 export * from './MigrationRunner';
+

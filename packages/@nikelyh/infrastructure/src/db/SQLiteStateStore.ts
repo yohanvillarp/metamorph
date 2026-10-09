@@ -5,6 +5,10 @@ import {
   MigrationPlan,
   StateRepository,
   TaskStatus,
+  TokenUsageRecord,
+  MigrationCostSummary,
+  createEmptyMigrationCostSummary,
+  AgentRole,
 } from '@nikelyh/domain';
 
 interface PlanRow {
@@ -35,6 +39,19 @@ interface EventRow {
   id: number;
   event_name: string;
   payload_json: string;
+  timestamp: string;
+}
+
+interface TokenUsageRow {
+  id: number;
+  run_id: string;
+  plan_id: string;
+  agent_role: string;
+  model_id: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost_usd: number;
   timestamp: string;
 }
 
@@ -106,6 +123,25 @@ export class SQLiteStateStore implements StateRepository {
         timestamp TEXT
       );
     `);
+
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS token_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT NOT NULL,
+        plan_id TEXT NOT NULL,
+        agent_role TEXT NOT NULL,
+        model_id TEXT NOT NULL,
+        prompt_tokens INTEGER NOT NULL,
+        completion_tokens INTEGER NOT NULL,
+        total_tokens INTEGER NOT NULL,
+        cost_usd REAL NOT NULL,
+        timestamp TEXT NOT NULL
+      );
+    `);
+
+    try {
+      this.db.exec('CREATE INDEX IF NOT EXISTS idx_token_usage_run ON token_usage(run_id);');
+    } catch (e) {}
   }
 
   async savePlan(plan: MigrationPlan): Promise<void> {
@@ -232,9 +268,71 @@ export class SQLiteStateStore implements StateRepository {
     }));
   }
 
+  async recordTokenUsage(record: TokenUsageRecord): Promise<void> {
+    const stmt = this.db.prepare(`
+      INSERT INTO token_usage (run_id, plan_id, agent_role, model_id, prompt_tokens, completion_tokens, total_tokens, cost_usd, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const timestamp = (record.timestamp || new Date()).toISOString();
+    stmt.run(
+      record.runId,
+      record.planId,
+      record.agentRole,
+      record.modelId,
+      record.promptTokens,
+      record.completionTokens,
+      record.totalTokens,
+      record.costUsd,
+      timestamp
+    );
+  }
+
+  async getCostSummary(runId: string): Promise<MigrationCostSummary> {
+    const stmt = this.db.prepare(`
+      SELECT * FROM token_usage WHERE run_id = ? ORDER BY id ASC
+    `);
+    const rows = stmt.all(runId) as unknown as TokenUsageRow[];
+
+    const planId = rows.length > 0 ? rows[0].plan_id : '';
+    const summary = createEmptyMigrationCostSummary(runId, planId);
+
+    for (const row of rows) {
+      summary.totalTokens += row.total_tokens;
+      summary.promptTokens += row.prompt_tokens;
+      summary.completionTokens += row.completion_tokens;
+      summary.totalCostUsd += row.cost_usd;
+
+      const role = row.agent_role as AgentRole;
+      if (summary.byAgentRole[role]) {
+        summary.byAgentRole[role].tokens += row.total_tokens;
+        summary.byAgentRole[role].promptTokens += row.prompt_tokens;
+        summary.byAgentRole[role].completionTokens += row.completion_tokens;
+        summary.byAgentRole[role].costUsd += row.cost_usd;
+        summary.byAgentRole[role].executions += 1;
+      }
+
+      if (!summary.byModel[row.model_id]) {
+        summary.byModel[row.model_id] = {
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          costUsd: 0,
+        };
+      }
+      summary.byModel[row.model_id].promptTokens += row.prompt_tokens;
+      summary.byModel[row.model_id].completionTokens += row.completion_tokens;
+      summary.byModel[row.model_id].totalTokens += row.total_tokens;
+      summary.byModel[row.model_id].costUsd += row.cost_usd;
+    }
+
+    summary.totalCostUsd = Math.round(summary.totalCostUsd * 1_000_000) / 1_000_000;
+    return summary;
+  }
+
   async reset(): Promise<void> {
     this.db.exec(`DELETE FROM tasks`);
     this.db.exec(`DELETE FROM plans`);
     this.db.exec(`DELETE FROM events`);
+    this.db.exec(`DELETE FROM token_usage`);
   }
 }

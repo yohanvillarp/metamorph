@@ -1,5 +1,6 @@
 import { MigrationProfile } from '../entities/MigrationProfile';
 import { PackageManagerType } from '../entities/ProjectProfile';
+import { AgentRole, TokenUsage } from '../entities/TokenUsage';
 
 /**
  * Official names of the Semantic Events for the Mozaik Bus.
@@ -16,6 +17,8 @@ export enum SemanticEventName {
   PHASE_PACKAGES_READY = 'phase.packages_ready',
   PHASE_INTEGRATION_STARTED = 'phase.integration_started',
   MIGRATION_COMPLETED = 'migration.completed',
+  TOKENS_REPORTED = 'tokens.reported',
+  TOKENS_CONSUMED = 'tokens.consumed',
   SYSTEM_LOG = 'system.log',
 }
 
@@ -84,5 +87,26 @@ export namespace SemanticEventPayloads {
     planId: string;
     message: string;
     level: 'info' | 'warning' | 'error';
+  }
+
+  export interface TokensReported {
+    planId: string;
+    runId?: string;
+    agentRole: AgentRole;
+    modelId: string;
+    tokenUsage?: TokenUsage | null;
+    promptText?: string;
+    completionText?: string;
+  }
+
+  export interface TokensConsumed {
+    planId: string;
+    runId: string;
+    agentRole: AgentRole;
+    modelId: string;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    costUsd: number;
   }
 }

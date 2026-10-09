@@ -139,4 +139,57 @@ describe('SQLiteStateStore', () => {
     assert.ok(retrieved);
     assert.equal(retrieved.packageManager, 'npm');
   });
+
+  test('records token usage and calculates run cost summary accurately', async () => {
+    const { store } = createTestStore();
+    const runId = 'run-token-test-1';
+    const planId = 'plan-token-test-1';
+
+    await store.recordTokenUsage({
+      runId,
+      planId,
+      agentRole: 'worker',
+      modelId: 'gpt-5.4',
+      promptTokens: 10000,
+      completionTokens: 2000,
+      totalTokens: 12000,
+      costUsd: 0.045,
+    });
+
+    await store.recordTokenUsage({
+      runId,
+      planId,
+      agentRole: 'reviewer',
+      modelId: 'gpt-5.4',
+      promptTokens: 5000,
+      completionTokens: 1000,
+      totalTokens: 6000,
+      costUsd: 0.0225,
+    });
+
+    const summary = await store.getCostSummary(runId);
+
+    assert.equal(summary.runId, runId);
+    assert.equal(summary.planId, planId);
+    assert.equal(summary.totalTokens, 18000);
+    assert.equal(summary.promptTokens, 15000);
+    assert.equal(summary.completionTokens, 3000);
+    assert.equal(summary.totalCostUsd, 0.0675);
+
+    assert.equal(summary.byAgentRole.worker.tokens, 12000);
+    assert.equal(summary.byAgentRole.worker.executions, 1);
+    assert.equal(summary.byAgentRole.reviewer.tokens, 6000);
+    assert.equal(summary.byAgentRole.reviewer.executions, 1);
+
+    assert.equal(summary.byModel['gpt-5.4'].totalTokens, 18000);
+  });
+
+  test('returns empty summary when runId has no token records', async () => {
+    const { store } = createTestStore();
+    const summary = await store.getCostSummary('non-existent-run');
+
+    assert.equal(summary.totalTokens, 0);
+    assert.equal(summary.totalCostUsd, 0);
+    assert.equal(summary.byAgentRole.worker.tokens, 0);
+  });
 });

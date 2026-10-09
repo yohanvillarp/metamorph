@@ -1,5 +1,16 @@
 # @nikelyh/metamorph
 
+## 2.2.0
+
+### Minor Changes
+
+- **Backend Target Structural Validation Plugins**: Introduced dedicated shadow workspace verification and file-hint plugins for all backend targets (`target-express`, `target-fastify`, `target-nestjs`). Integration agents now perform deterministic structural assertions, framework repair heuristics, and scaffold verifications on backend codebases matching frontend validation rigor.
+- **Cascading Configuration System (`metamorph config`)**: Full CLI command suite (`config get`, `config set`, `config list`, `config path`) backed by a multi-tier cascading resolution hierarchy (`CLI flags` > `Environment variables` > `Local .metamorphrc.json` > `Global ~/.metamorphrc.json` > `Defaults`).
+- **Token Accounting & Real-Time Cost Estimation**: Implemented persistent token accounting via `CostAccountingStore` in `.metamorph/history.db`. Accurately tracks prompt, completion, and total tokens per model, with live expenditure visualization in the Dashboard UI.
+- **Adaptive Agent Swarm & Dynamic Registry**: Introduced `AgentRegistry` supporting `--disable-agents <list>` execution flags and config. Provides zero-token bypass modes, automatic fallbacks for optional agents, offline server detection, and graceful recovery of zombie/stale migration runs.
+- **Project Intelligence Engine (PIE) Parity**: Enhanced detection signals and heuristic confidence scoring for backend runtimes (Express, Fastify, NestJS) and React SPAs, supporting nested entrypoints (`src/app.ts`, `server.ts`, root bootstrap files) and workspace detection.
+- **Modular Vertical Architecture Slices**: Refactored CLI commands and Mozaik agent handlers into clean, maintainable vertical slices, reducing CLI entry points to under 35 lines and ensuring strict Hexagonal boundary separation.
+
 ## 2.1.2
 
 ### Minor & Patch Changes

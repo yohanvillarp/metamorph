@@ -63,9 +63,12 @@ metamorph/
 │       │       └── driving/        # MigrationCommand (primary port)
 │       ├── application/            # Mozaik Agents, Runtime, MetamorphState, MigrationRunner
 │       │   └── src/
-│       │       ├── agents/         # Mapper, Worker, Reviewer, PackageManager, Coordinator, Integration, Reporter
+│       │       ├── agents/         # Vertical feature slices (worker/, reviewer/, coordinator/, integration/, etc.)
+│       │       ├── concurrency/    # ConcurrencyQueue (bounded execution)
+│       │       ├── context/        # FileTreeBuilder, NeighborContext
+│       │       ├── analysis/       # NextMigrationHints, FrontendRuntimeHints, classifyMissingFile
 │       │       ├── migration/      # Plugins, structure verifiers, registry
-│       │       └── utils/          # FileTreeBuilder, NeighborContext, NextMigrationHints
+│       │       └── utils/          # Backward-compatibility re-exports
 │       ├── infrastructure/         # Concrete Adapters
 │       │   └── src/
 │       │       ├── db/             # SQLiteStateStore (.metamorph/history.db)
@@ -74,6 +77,9 @@ metamorph/
 │       │       ├── tools/          # AstTools (ts-morph), BuildTools, LinterTools
 │       │       └── server/         # Express REST API (SSE endpoints for Dashboard)
 │       └── cli/                    # Executable CLI with Commander and Ora
+│           └── src/
+│               ├── commands/       # Modular command slices (run/, config/, ui/, apply/, rollback/, etc.)
+│               └── index.ts        # Commander registration entry point (< 40 lines)
 ├── .agents/                        # AI context rules, skills, and knowledge base
 └── docs/                           # Architectural whitepapers and engineering standards
 ```
@@ -99,6 +105,11 @@ npm run typecheck
 npm run test
 ```
 
+### Bump Monorepo Release Version
+```bash
+npm run bump -- minor   # or patch, major, or explicit X.Y.Z
+```
+
 ### Run CLI Directly from Source
 ```bash
 # In packages/@nikelyh/cli:
@@ -118,6 +129,9 @@ npm run dev -- ui
 * **Strict Typing**: Always declare explicit types in TypeScript (`noImplicitAny: true`). The use of `any` is strictly prohibited.
 * **Semantic Events**: Always use the `SemanticEventName` enum and typed `SemanticEventPayloads.*` interfaces. Never publish raw string literals.
 * **Concurrency Bounds**: All LLM-calling agents must execute through `ConcurrencyQueue` with a strict limit (`limit: 3`).
+* **Cascading Configuration**: Any user or runner configuration resolution must go through `ConfigStore.resolveEffectiveConfig()`, strictly honoring precedence (`CLI flags` > `process.env` > local `.metamorphrc.json` > global `~/.metamorphrc.json` > defaults).
+* **Structural Validation Plugins**: Both frontend (Vue, Svelte, Angular) and backend targets (Express, Fastify, NestJS) implement `TargetValidationPlugin` registered in `migration/plugins/index.ts`. When introducing new migration targets, always implement corresponding `fileHint`, `verifyShadow`, and `repairTargets` hooks.
+* **Token & Cost Accounting**: Agent LLM usage is tracked in SQLite via `CostAccountingStore`. Token usage records must include model name and prompt/completion counts.
 * **Neighbor Context**: When transforming code, always inspect imported neighbor files (`NeighborContext`) to preserve exact public prop names and export signatures.
 * **Dashboard FSD Layering**: Respect Feature-Sliced Design dependency flow (`shared` -> `entities` -> `features` -> `widgets` -> `pages` -> `app`). Cross-imports on the same layer are strictly prohibited.
 * **Strict Zero-Emoji Rule**: Never introduce unicode emojis into the Dashboard UI. Use `lucide-react` vector icons exclusively.

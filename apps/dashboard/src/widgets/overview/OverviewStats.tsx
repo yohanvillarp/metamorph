@@ -1,11 +1,17 @@
 import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Bar, Cell } from 'recharts';
 
+export interface ActivityChartItem {
+  name: string;
+  events: number;
+  color: string;
+}
+
 interface OverviewStatsProps {
   pendingTasks: number;
   inProgressTasks: number;
   completedTasks: number;
   failedTasks: number;
-  chartData: any[];
+  chartData: ActivityChartItem[];
   isIntegrating?: boolean;
 }
 

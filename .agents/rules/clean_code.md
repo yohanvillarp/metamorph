@@ -62,6 +62,10 @@ Every AI agent and human contributor writing or refactoring code in Metamorph mu
 6. **Error Context & RCA Clarity**:
    - Never swallow exceptions silently with empty `catch {}` unless explicitly expected (e.g., SQLite `duplicate column` during auto-migration).
    - Log descriptive error contexts using structured logging or `system.log` events.
+7. **Directory Density & Vertical Feature Slices**:
+   - Avoid flat directory bloating. Folders should ideally contain no more than 5–7 files.
+   - For complex components (such as Mozaik agents or CLI commands), organize logic into vertical feature slices (e.g. `agents/worker/`, `agents/reviewer/`, `commands/run/`, `commands/ui/`) encapsulating their specific runners, validators, prompts, options, and tests.
+   - Provide clean public barrel files (`index.ts`) per slice for backward-compatible consumption.
 
 ---
 

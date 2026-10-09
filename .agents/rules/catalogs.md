@@ -25,6 +25,6 @@ To add a new framework pair (e.g. `express` -> `koa` or `react` -> `solid`):
    - `scriptsToUpdate` / `scriptsToRemove`.
    - `filesToDelete`: Deprecated config files to delete.
    - `filesToScaffold`: Initial boilerplate files needed to boot the target framework.
-3. **Update CLI Supported Map**: Update `SUPPORTED_MIGRATIONS` in `packages/@nikelyh/cli/src/index.ts`.
+3. **Update CLI Supported Map**: Update `SUPPORTED_MIGRATIONS` in `packages/@nikelyh/cli/src/commands/run/run.options.ts`.
 4. **Update Project Intelligence Engine**: Add detection signatures in `packages/@nikelyh/infrastructure/src/detector/rules/detectionRules.ts` and verify resolution with `resolveMigrationCatalog(source, target)`.
 

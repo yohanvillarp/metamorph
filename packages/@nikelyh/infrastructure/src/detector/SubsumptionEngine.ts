@@ -74,7 +74,10 @@ export function evaluateAndDisambiguate(
     }
 
     // 5. Check characteristic extension files
-    if (rule.framework === 'vue' && structure.extensionCounts.vue > 0) {
+    if (rule.framework === 'react' && structure.extensionCounts.reactJsx > 0) {
+      score += 20;
+      evidence.push(`source: found ${structure.extensionCounts.reactJsx} .tsx/.jsx file(s)`);
+    } else if (rule.framework === 'vue' && structure.extensionCounts.vue > 0) {
       score += 20;
       evidence.push(`source: found ${structure.extensionCounts.vue} .vue file(s)`);
     } else if (rule.framework === 'svelte' && structure.extensionCounts.svelte > 0) {

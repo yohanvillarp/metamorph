@@ -50,20 +50,13 @@ export interface DetectedTech {
   profile?: ProjectProfile;
 }
 
-export interface MigrationPlan {
-  id: string;
-  runId: string;
-  sourceFramework: string;
-  targetFramework: string;
-  targetPath: string;
-  packageManager?: 'npm' | 'pnpm' | 'yarn' | 'bun';
-  phase?: 'files' | 'integration' | 'completed' | 'failed';
-  outcome?: 'success' | 'failed';
-  appliedAt?: string;
-  appliedBranch?: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
-  totalFiles: number;
-  migratedFiles: number;
-  createdAt: string;
-  tasks: any[];
-}
+export type {
+  TaskItem,
+  MigrationEventItem,
+  MigrationPlan,
+  AgentRoleCost,
+  ModelCostBreakdown,
+  MigrationCostSummary,
+  StartMigrationResponse,
+  ApplyMigrationResponse,
+} from '@/shared/api/types';
