@@ -240,6 +240,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 `,
 };
 
+export const HONO_SCRIPTS = {
+  dev: 'tsx watch src/index.ts',
+  build: 'tsc',
+  start: 'node dist/index.js',
+};
+
 export const VITE_FILES_TO_DELETE = ['vite.config.ts', 'vite.config.js'];
 export const NEXT_FILES_TO_DELETE = ['next.config.js', 'next.config.mjs', 'next.config.ts', 'next-env.d.ts'];
 export const ANGULAR_FILES_TO_DELETE = ['angular.json'];

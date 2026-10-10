@@ -32,7 +32,7 @@
 
 - **Project Intelligence Engine (PIE)**: Autonomously maps complex codebases, heuristics, dynamic entrypoints, and monorepos (Turborepo, pnpm workspaces, npm/yarn workspaces, Lerna).
 - **Polymorphic Package Manager Engine (PPME)**: Native, lockfile-aware execution adapting cleanly to `npm`, `pnpm`, `yarn`, and `bun`.
-- **Structural Validation Plugins**: Deterministic shadow workspace assertions and repair heuristics for both frontend (Vue, Svelte, Angular) and backend (Express, Fastify, NestJS) migration targets.
+- **Structural Validation Plugins**: Deterministic shadow workspace assertions and repair heuristics for both frontend (Vue, Svelte, Angular) and backend (Express, Fastify, NestJS, Hono) migration targets.
 - **Cascading Configuration System**: Unified hierarchical settings resolution across CLI flags, environment variables, local `.metamorphrc.json`, and global user config (`~/.metamorphrc.json`).
 - **Token Accounting & Cost Estimation**: Live granular token telemetry and cost estimation persisted in SQLite and streamed to the dashboard.
 - **Zero Risk (Shadow Workspace)**: All file mutations and builds occur inside an isolated sandbox (`.metamorph/shadow/<runId>`). Your original code is never touched until you review and apply.

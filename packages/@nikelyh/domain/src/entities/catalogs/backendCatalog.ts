@@ -314,5 +314,296 @@ export class UsersController {
 }`
       }
     ]
+  },
+  // ── Hono migration pairs ─────────────────────────────────────────────────
+  {
+    source: 'express',
+    target: 'hono',
+    description: 'Migration from a plain Express application to Hono.',
+    dependenciesToRemove: ['express'],
+    dependenciesToAdd: { 'hono': 'latest', '@hono/node-server': 'latest' },
+    devDependenciesToRemove: ['@types/express'],
+    devDependenciesToAdd: {},
+    architecturalRules: [
+      'Replace all Express app instantiations (express()) with new Hono().',
+      'Replace Express middleware signatures (req, res, next) with Hono middleware (c, next) using the Context object.',
+      'Replace Express routing (app.get(), app.use(), Router()) with Hono routing (app.get(), app.route()).',
+      'Replace Express response methods (res.json(), res.send(), res.status()) with Hono Context methods (c.json(), c.text(), c.status()).',
+      'Replace app.listen() with serve() from "@hono/node-server".',
+      'Request body is accessed via c.req.json() (async) instead of req.body.',
+      'Route parameters are accessed via c.req.param("name") instead of req.params.name.',
+      'Query parameters are accessed via c.req.query("name") instead of req.query.name.',
+      'Migrate standard Express middlewares (cors, helmet) to Hono built-in middleware (hono/cors, hono/secure-headers) if present.',
+      'You are authorized to rename, create, or delete files to restructure the Express app into Hono route groups.',
+    ],
+    examples: [
+      {
+        description: 'Converting an Express Route to a Hono Route',
+        before: `import express from 'express';
+const app = express();
+
+app.get('/api/data', (req, res) => {
+  res.json({ message: 'Hello Express' });
+});
+
+app.listen(3000);`,
+        after: `import { Hono } from 'hono';
+import { serve } from '@hono/node-server';
+
+const app = new Hono();
+
+app.get('/api/data', (c) => {
+  return c.json({ message: 'Hello Hono' });
+});
+
+serve({ fetch: app.fetch, port: 3000 });`,
+      },
+    ],
+  },
+  {
+    source: 'hono',
+    target: 'express',
+    description: 'Migration from a Hono application to Express.',
+    dependenciesToRemove: ['hono', '@hono/node-server'],
+    dependenciesToAdd: { 'express': 'latest' },
+    devDependenciesToRemove: [],
+    devDependenciesToAdd: { '@types/express': 'latest' },
+    architecturalRules: [
+      'Replace all new Hono() instantiations with express().',
+      'Replace Hono middleware (c, next) with Express middleware signatures (req, res, next).',
+      'Replace Hono routing (app.get(), app.route()) with Express routing (app.get(), express.Router()).',
+      'Replace Hono Context response methods (c.json(), c.text()) with Express response methods (res.json(), res.send()).',
+      'Replace serve() from "@hono/node-server" with app.listen().',
+      'CRITICAL: Hono catches async errors automatically via Context. When migrating to Express, ensure all asynchronous route handlers use try/catch blocks passing the error to next(err).',
+      'Replace c.req.json() with req.body (add express.json() middleware).',
+      'Replace c.req.param("name") with req.params.name.',
+      'Replace c.req.query("name") with req.query.name.',
+      'You are authorized to rename, create, or delete files to restructure Hono route groups into Express routers.',
+    ],
+    examples: [
+      {
+        description: 'Converting a Hono Route to an Express Route',
+        before: `import { Hono } from 'hono';
+import { serve } from '@hono/node-server';
+
+const app = new Hono();
+
+app.get('/api/data', (c) => {
+  return c.json({ message: 'Hello Hono' });
+});
+
+serve({ fetch: app.fetch, port: 3000 });`,
+        after: `import express from 'express';
+
+const app = express();
+
+app.get('/api/data', (req, res) => {
+  res.json({ message: 'Hello Express' });
+});
+
+app.listen(3000);`,
+      },
+    ],
+  },
+  {
+    source: 'fastify',
+    target: 'hono',
+    description: 'Migration from a Fastify application to Hono.',
+    dependenciesToRemove: ['fastify', 'fastify-plugin'],
+    dependenciesToAdd: { 'hono': 'latest', '@hono/node-server': 'latest' },
+    devDependenciesToRemove: [],
+    devDependenciesToAdd: {},
+    architecturalRules: [
+      'Replace all Fastify() instantiations with new Hono().',
+      'Replace Fastify hooks (onRequest, preHandler) with Hono middleware (app.use()).',
+      'Replace Fastify routing (fastify.get(), fastify.register()) with Hono routing (app.get(), app.route()).',
+      'Replace Fastify reply methods (reply.send()) or implicit returns with Hono Context methods (c.json(), c.text()).',
+      'Replace fastify.listen() with serve() from "@hono/node-server".',
+      'Convert Fastify plugins to Hono sub-apps: create a new Hono() instance and mount with app.route("/prefix", subApp).',
+      'Replace request.body with c.req.json() (async).',
+      'Replace Fastify JSON Schema validation with Hono validators (hono/validator) if present.',
+      'You are authorized to rename, create, or delete files to restructure Fastify plugins into Hono route groups.',
+    ],
+    examples: [
+      {
+        description: 'Converting a Fastify Plugin to a Hono Route Group',
+        before: `import Fastify from 'fastify';
+
+const fastify = Fastify({ logger: true });
+
+fastify.get('/api/data', async (request, reply) => {
+  return { message: 'Hello Fastify' };
+});
+
+fastify.listen({ port: 3000 });`,
+        after: `import { Hono } from 'hono';
+import { serve } from '@hono/node-server';
+
+const app = new Hono();
+
+app.get('/api/data', (c) => {
+  return c.json({ message: 'Hello Hono' });
+});
+
+serve({ fetch: app.fetch, port: 3000 });`,
+      },
+    ],
+  },
+  {
+    source: 'hono',
+    target: 'fastify',
+    description: 'Migration from a Hono application to Fastify.',
+    dependenciesToRemove: ['hono', '@hono/node-server'],
+    dependenciesToAdd: { 'fastify': 'latest' },
+    devDependenciesToRemove: [],
+    devDependenciesToAdd: { 'fastify-plugin': 'latest' },
+    architecturalRules: [
+      'Replace all new Hono() instantiations with Fastify().',
+      'Replace Hono middleware (c, next) with Fastify hooks (onRequest, preHandler) or plugins.',
+      'Replace Hono routing (app.get(), app.route()) with Fastify routing (fastify.get(), fastify.register()).',
+      'Replace Hono Context response methods (c.json(), c.text()) with Fastify reply methods (reply.send()) or implicit returns.',
+      'Replace serve() from "@hono/node-server" with fastify.listen().',
+      'Convert Hono sub-apps (app.route("/prefix", subApp)) into Fastify plugins using fastify-plugin.',
+      'Replace c.req.json() with request.body.',
+      'You are authorized to rename, create, or delete files to restructure Hono route groups into Fastify plugins.',
+    ],
+    examples: [
+      {
+        description: 'Converting a Hono Route to a Fastify Route',
+        before: `import { Hono } from 'hono';
+import { serve } from '@hono/node-server';
+
+const app = new Hono();
+
+app.get('/api/data', (c) => {
+  return c.json({ message: 'Hello Hono' });
+});
+
+serve({ fetch: app.fetch, port: 3000 });`,
+        after: `import Fastify from 'fastify';
+
+const fastify = Fastify({ logger: true });
+
+fastify.get('/api/data', async (request, reply) => {
+  return { message: 'Hello Fastify' };
+});
+
+fastify.listen({ port: 3000 });`,
+      },
+    ],
+  },
+  {
+    source: 'nestjs',
+    target: 'hono',
+    description: 'Migration from NestJS framework to a Hono application structure.',
+    filesToDelete: ['nest-cli.json', 'tsconfig.build.json'],
+    dependenciesToRemove: ['@nestjs/common', '@nestjs/core', '@nestjs/platform-express', 'reflect-metadata', 'rxjs'],
+    dependenciesToAdd: { 'hono': 'latest', '@hono/node-server': 'latest' },
+    devDependenciesToRemove: ['@nestjs/cli', '@nestjs/schematics', '@nestjs/testing', '@types/express', '@types/supertest', 'source-map-support', 'supertest'],
+    devDependenciesToAdd: {},
+    architecturalRules: [
+      'Remove all NestJS decorators (@Module, @Controller, @Injectable, @Get, @Post, etc.).',
+      'Remove all NestJS core imports (e.g., from "@nestjs/common" or "@nestjs/core").',
+      'Controllers must be converted into Hono route groups: create a new Hono() sub-app with routes, then mount via app.route().',
+      'Modules must be converted to plain composition functions that wire route groups together.',
+      'Services/Providers must be converted to plain TypeScript classes or functions, with dependencies passed explicitly (manual DI).',
+      'The entry point must create a new Hono() app and use serve() from "@hono/node-server" instead of NestFactory.create().',
+      'You are authorized to rename, create, or delete files to adhere to a Hono route-group directory structure.',
+    ],
+    examples: [
+      {
+        description: 'Converting a NestJS Controller to a Hono Route Group',
+        before: `import { Controller, Get } from '@nestjs/common';
+import { AppService } from './app.service';
+
+@Controller('users')
+export class UsersController {
+  constructor(private readonly appService: AppService) {}
+
+  @Get()
+  getUsers() {
+    return this.appService.getUsers();
   }
+}`,
+        after: `import { Hono } from 'hono';
+import { AppService } from './app.service';
+
+const appService = new AppService();
+const users = new Hono();
+
+users.get('/', (c) => {
+  return c.json(appService.getUsers());
+});
+
+export default users;`,
+      },
+    ],
+  },
+  {
+    source: 'hono',
+    target: 'nestjs',
+    description: 'Migration from a Hono application to NestJS (using platform-express by default).',
+    dependenciesToRemove: ['hono', '@hono/node-server'],
+    dependenciesToAdd: {
+      '@nestjs/common': 'latest',
+      '@nestjs/core': 'latest',
+      '@nestjs/platform-express': 'latest',
+      'reflect-metadata': '^0.1.13',
+      'rxjs': '^7.8.1',
+    },
+    devDependenciesToRemove: [],
+    devDependenciesToAdd: {
+      '@nestjs/cli': 'latest',
+      '@nestjs/schematics': 'latest',
+      '@nestjs/testing': 'latest',
+      '@types/node': '^20.0.0',
+      '@types/supertest': '^2.0.12',
+      'source-map-support': '^0.5.21',
+      'supertest': '^6.3.3',
+    },
+    scriptsToUpdate: {
+      'build': 'tsc',
+    },
+    architecturalRules: [
+      'Hono route handlers must be encapsulated in classes decorated with @Controller().',
+      'Business logic must be encapsulated in classes decorated with @Injectable() (Providers/Services).',
+      'All Controllers and Providers must be registered in a class decorated with @Module().',
+      'Use NestJS decorators for routing (@Get(), @Post(), @Param(), @Body(), etc.) instead of Hono route definitions.',
+      'Rely on NestJS dependency injection instead of manual class instantiation.',
+      'The entry point must use NestFactory.create() to bootstrap the application, replacing serve() from "@hono/node-server".',
+      'You are authorized to rename, create, or delete files to adhere strictly to the NestJS directory and file structure conventions (e.g., app.module.ts, app.controller.ts, app.service.ts, main.ts).',
+    ],
+    examples: [
+      {
+        description: 'Converting a Hono Route Group to a NestJS Controller and Service',
+        before: `import { Hono } from 'hono';
+
+const users = new Hono();
+
+users.get('/', (c) => {
+  return c.json({ users: [] });
+});
+
+export default users;`,
+        after: `import { Controller, Get, Injectable } from '@nestjs/common';
+
+@Injectable()
+export class UsersService {
+  getUsers() {
+    return { users: [] };
+  }
+}
+
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  getUsers() {
+    return this.usersService.getUsers();
+  }
+}`,
+      },
+    ],
+  },
 ];

@@ -62,7 +62,7 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     packageKeys: ['@nestjs/core', '@nestjs/common'],
     configPrefixes: ['nest-cli.json'],
     subsumes: ['express', 'fastify', '@nestjs/platform-express', '@nestjs/platform-fastify'],
-    suggestedTargets: ['express', 'fastify'],
+    suggestedTargets: ['express', 'fastify', 'hono'],
   },
   {
     framework: 'express',
@@ -70,7 +70,7 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     packageKeys: ['express'],
     devPackageKeys: ['@types/express'],
     configPrefixes: [],
-    suggestedTargets: ['fastify', 'nestjs'],
+    suggestedTargets: ['fastify', 'nestjs', 'hono'],
   },
   {
     framework: 'fastify',
@@ -78,6 +78,14 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     packageKeys: ['fastify'],
     devPackageKeys: ['fastify-plugin'],
     configPrefixes: [],
-    suggestedTargets: ['express', 'nestjs'],
+    suggestedTargets: ['express', 'nestjs', 'hono'],
+  },
+  {
+    framework: 'hono',
+    category: 'backend-api',
+    packageKeys: ['hono'],
+    devPackageKeys: ['@hono/node-server'],
+    configPrefixes: [],
+    suggestedTargets: ['express', 'fastify', 'nestjs'],
   },
 ];

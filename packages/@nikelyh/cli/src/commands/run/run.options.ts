@@ -13,9 +13,10 @@ export interface RunCommandOptions {
 }
 
 export const SUPPORTED_MIGRATIONS: Record<string, string[]> = {
-  express: ['fastify', 'nestjs'],
-  fastify: ['express', 'nestjs'],
-  nestjs: ['express', 'fastify'],
+  express: ['fastify', 'nestjs', 'hono'],
+  fastify: ['express', 'nestjs', 'hono'],
+  nestjs: ['express', 'fastify', 'hono'],
+  hono: ['express', 'fastify', 'nestjs'],
   react: ['next', 'vue', 'angular', 'svelte'],
   next: ['react', 'vue', 'angular', 'svelte'],
   vue: ['react', 'next', 'angular', 'svelte'],

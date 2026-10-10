@@ -6,12 +6,15 @@ import * as os from 'node:os';
 import {
   analyzeExpressTarget,
   analyzeFastifyTarget,
+  analyzeHonoTarget,
   analyzeNestjsTarget,
   expressFileHint,
   fastifyFileHint,
+  honoFileHint,
   nestjsFileHint,
   expressTargetPlugin,
   fastifyTargetPlugin,
+  honoTargetPlugin,
   nestjsTargetPlugin,
 } from './backendTargets';
 
@@ -261,6 +264,121 @@ bootstrap();`
     });
   });
 
+  describe('target-hono (analyzeHonoTarget)', () => {
+    it('reports issue when entry point is missing', () => {
+      fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({ name: 'test-hono' }));
+      const issues = analyzeHonoTarget(tmpDir);
+      assert.ok(issues.some(i => i.errors.some(e => e.includes('Missing Hono entry point'))));
+    });
+
+    it('reports issue when entry file does not instantiate Hono', () => {
+      fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({ name: 'test-hono' }));
+      fs.writeFileSync(path.join(tmpDir, 'src', 'index.ts'), 'console.log("no hono");');
+
+      const issues = analyzeHonoTarget(tmpDir);
+      assert.ok(issues.some(i => i.errors.some(e => e.includes('does not instantiate Hono'))));
+    });
+
+    it('reports issue when entry file neither serves nor exports', () => {
+      fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({ name: 'test-hono' }));
+      fs.writeFileSync(
+        path.join(tmpDir, 'src', 'index.ts'),
+        `import { Hono } from 'hono';
+const app = new Hono();`
+      );
+
+      const issues = analyzeHonoTarget(tmpDir);
+      assert.ok(issues.some(i => i.errors.some(e => e.includes('neither calls serve()'))));
+    });
+
+    it('flags leftover Express, Fastify, and NestJS dependencies', () => {
+      fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        JSON.stringify({
+          name: 'hono-with-leftovers',
+          dependencies: {
+            hono: 'latest',
+            express: '^4.18.2',
+            fastify: '^4.0.0',
+            '@nestjs/core': '^10.0.0',
+          },
+        })
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, 'src', 'index.ts'),
+        `import { Hono } from 'hono';
+import { serve } from '@hono/node-server';
+const app = new Hono();
+serve({ fetch: app.fetch, port: 3000 });`
+      );
+
+      const issues = analyzeHonoTarget(tmpDir);
+      assert.ok(issues.some(i => i.errors.some(e => e.includes('Express dependencies'))));
+      assert.ok(issues.some(i => i.errors.some(e => e.includes('Fastify dependencies'))));
+      assert.ok(issues.some(i => i.errors.some(e => e.includes('NestJS dependencies'))));
+    });
+
+    it('flags leftover framework references in entry file', () => {
+      fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({ name: 'test-hono' }));
+      fs.writeFileSync(
+        path.join(tmpDir, 'src', 'index.ts'),
+        `import { Hono } from 'hono';
+import { serve } from '@hono/node-server';
+import express from 'express';
+const app = new Hono();
+serve({ fetch: app.fetch, port: 3000 });`
+      );
+
+      const issues = analyzeHonoTarget(tmpDir);
+      assert.ok(issues.some(i => i.errors.some(e => e.includes('still references Express'))));
+    });
+
+    it('passes cleanly for a valid Hono application', () => {
+      fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        JSON.stringify({
+          name: 'hono-clean',
+          dependencies: { hono: 'latest', '@hono/node-server': 'latest' },
+        })
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, 'src', 'index.ts'),
+        `import { Hono } from 'hono';
+import { serve } from '@hono/node-server';
+
+const app = new Hono();
+
+app.get('/', (c) => c.text('Hello Hono'));
+
+serve({ fetch: app.fetch, port: 3000 });`
+      );
+
+      const issues = analyzeHonoTarget(tmpDir);
+      assert.strictEqual(issues.length, 0);
+    });
+
+    it('supports root-level entry files', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        JSON.stringify({ name: 'hono-root', dependencies: { hono: 'latest' } })
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, 'index.ts'),
+        `import { Hono } from 'hono';
+const app = new Hono();
+export default app;`
+      );
+
+      const issues = analyzeHonoTarget(tmpDir);
+      assert.strictEqual(issues.length, 0);
+    });
+  });
+
   describe('File hints and plugin registrations', () => {
     it('provides descriptive file hints for backend entry points and modules', () => {
       assert.ok(expressFileHint('src/main.ts').includes('Express entry'));
@@ -272,6 +390,9 @@ bootstrap();`
       assert.ok(nestjsFileHint('src/main.ts').includes('NestJS entry'));
       assert.ok(nestjsFileHint('src/app.module.ts').includes('root NestJS module'));
       assert.strictEqual(nestjsFileHint('src/service.ts'), '');
+
+      assert.ok(honoFileHint('src/index.ts').includes('Hono entry'));
+      assert.strictEqual(honoFileHint('src/utils.ts'), '');
     });
 
     it('plugins declare valid metadata and repairTargets', () => {
@@ -290,6 +411,11 @@ bootstrap();`
       assert.strictEqual(nestjsTargetPlugin.layer, 'backend');
       const nestjsTargets = nestjsTargetPlugin.repairTargets?.(tmpDir, ctx);
       assert.ok(nestjsTargets && nestjsTargets.length > 0);
+
+      assert.strictEqual(honoTargetPlugin.id, 'target-hono');
+      assert.strictEqual(honoTargetPlugin.layer, 'backend');
+      const honoTargets = honoTargetPlugin.repairTargets?.(tmpDir, ctx);
+      assert.ok(honoTargets && honoTargets.length > 0);
     });
   });
 });
