@@ -8,7 +8,7 @@
     "@mozaik-ai/core": "^4.0.6",
     "@nikelyh/domain": "*",
     "cors": "^2.8.6",
-    "express": "^5.2.1",
+    "express": "^5.3.0",
     "fs-extra": "^11.4.1",
     "ts-morph": "^28.0.0"
   },
