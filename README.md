@@ -38,11 +38,13 @@
 - **Project Intelligence Engine (PIE)**: Autonomously maps complex codebases, heuristics, dynamic entrypoints, and monorepos (Turborepo, pnpm workspaces, npm/yarn workspaces, Lerna).
 - **Polymorphic Package Manager Engine (PPME)**: Native, lockfile-aware execution adapting cleanly to `npm`, `pnpm`, `yarn`, and `bun`.
 - **Structural Validation Plugins**: Deterministic shadow workspace assertions and repair heuristics for both frontend (Vue, Svelte, Angular) and backend (Express, Fastify, NestJS, Hono) migration targets.
+- **Deterministic Mock LLM Provider**: Offline $0.00 migrations simulating token metrics with zero external API credentials via `--mock`.
+- **Pre-Migration Dry Run**: Preview migration plans, rule sets, and package changes without executing inference via `--dry-run`.
 - **Cascading Configuration System**: Unified hierarchical settings resolution across CLI flags, environment variables, local `.metamorphrc.json`, and global user config (`~/.metamorphrc.json`).
 - **Token Accounting & Cost Estimation**: Live granular token telemetry and cost estimation persisted in SQLite and streamed to the dashboard.
 - **Zero Risk (Shadow Workspace)**: All file mutations and builds occur inside an isolated sandbox (`.metamorph/shadow/<runId>`). Your original code is never touched until you review and apply.
 - **Shadow Verification Build**: Migrations are strictly compiled and verified before completion.
-- **Real-Time Visual Telemetry**: Monitor swarm operations, review feedback, cost metrics, and build diagnostics in real-time via the built-in React dashboard.
+- **Real-Time Visual Telemetry**: Monitor swarm operations, review feedback, cost metrics, shadow diffs, and build diagnostics in real-time via the built-in React dashboard.
 
 ## System Architecture
 
@@ -119,7 +121,7 @@ metamorph ui
 
 ### Other Commands
  
-- `metamorph run [options]`: Runs an automated migration (e.g. `--from <src> --to <target> --workspace <pkg> --disable-agents <list>`).
+- `metamorph run [options]`: Runs an automated migration (e.g. `--from <src> --to <target> --mock --dry-run --workspace <pkg> --disable-agents <list>`).
 - `metamorph config <get|set|list|path>`: Manages persistent cascading configuration (model, concurrency, timeout, retries, disabled agents).
 - `metamorph detect [path]`: Detects frameworks, libraries, package managers, and monorepo workspaces.
 - `metamorph apply <runId> [targetPath]`: Applies a completed migration to your repository, creating a new git branch.

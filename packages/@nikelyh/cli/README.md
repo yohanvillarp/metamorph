@@ -22,13 +22,15 @@ Metamorph is a CLI tool powered by [Mozaik](https://github.com/jigjoy-ai/mozaik)
 
 - **Project Intelligence Engine (PIE)** -- Autonomously detects project architecture, frameworks, dynamic entrypoints, and monorepo workspace topologies (Turborepo, pnpm workspaces, npm/yarn workspaces, Lerna).
 - **Polymorphic Package Manager (PPME)** -- Automatically detects and adapts to your chosen package manager (`npm`, `pnpm`, `yarn`, `bun`) without host process leakage.
-- **Structural Validation Plugins** -- Deterministic shadow workspace assertions, scaffold verifications, and repair heuristics for both frontend (Vue, Svelte, Angular) and backend (Express, Fastify, NestJS) migration targets.
+- **Structural Validation Plugins** -- Deterministic shadow workspace assertions, scaffold verifications, and repair heuristics for both frontend (Vue, Svelte, Angular) and backend (Express, Fastify, NestJS, Hono) migration targets.
+- **Deterministic Mock LLM Provider** -- Run complete offline migrations at $0.00 cost with simulated token metrics and zero external API keys via `--mock`.
+- **Pre-Migration Dry Run** -- Inspect targeted files, architectural rules, and package manager updates before executing via `--dry-run`.
 - **Cascading Configuration System** -- Tiered configuration management via `metamorph config` across CLI flags, env vars, `.metamorphrc.json`, and global user defaults.
 - **Token Accounting & Real-Time Cost Estimation** -- Live token tracking per model and estimated inference costs persisted in SQLite and displayed in the dashboard.
 - **Multi-Agent Concurrency** -- Utilizes Mapper, Worker, Reviewer, Integration, and Coordinator agents to migrate code in parallel.
 - **Zero Risk (Shadow Workspace)** -- All migrations happen in an isolated `.metamorph/shadow` workspace. Your original code is completely untouched until you explicitly approve and apply the changes.
 - **Shadow Build Verification** -- Every migration is validated with your package manager (`npm`, `pnpm`, `yarn`, `bun`) and verification build inside the shadow workspace before completion.
-- **Visual Dashboard** -- Watch your agents work in real-time through the built-in local dashboard UI.
+- **Visual Dashboard** -- Watch your agents work in real-time through the built-in local dashboard UI, including shadow diff inspection.
 - **Extensive Framework Support** -- Easily migrate between popular frontend and backend frameworks.
 
 ## Installation
@@ -42,10 +44,11 @@ npm install -g @nikelyh/metamorph
 ### Prerequisites
 
 - Node.js >= 20
-- An LLM provider API key (OpenAI, Anthropic, or compatible). Set it as an environment variable:
+- An LLM provider API key (OpenAI, Anthropic, or compatible) when executing live inference:
   ```bash
   export OPENAI_API_KEY=sk-...
   ```
+  *(Alternatively, run completely offline with zero API keys and $0.00 cost using `--mock`)*.
 
 ## Typical Workflow
 
@@ -60,7 +63,19 @@ metamorph run
 Metamorph automatically detects your current stack (e.g., Express, React) and prompts you to select the target framework. You can bypass the interactive prompt by passing the source explicitly:
 
 ```bash
-metamorph run --from express
+metamorph run --from express --to fastify
+```
+
+To preview the migration plan without executing inference or modifying files:
+
+```bash
+metamorph run --from express --to fastify --dry-run
+```
+
+To test swarm execution completely offline with $0.00 simulated telemetry:
+
+```bash
+metamorph run --from express --to fastify --mock
 ```
 
 ### 2. Monitor the Agents (Dashboard UI)
