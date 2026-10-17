@@ -17,6 +17,13 @@ export interface ModelPricingTier {
  * Rates in USD per 1,000,000 tokens (input / output).
  */
 export const BUNDLED_MODEL_PRICING: Record<MozaikBundledModel, ModelPricingTier> = {
+  // Offline Mock
+  'mock': {
+    modelId: 'mock',
+    inputPricePerMillion: 0,
+    outputPricePerMillion: 0,
+    currency: 'USD',
+  },
   // OpenAI
   'gpt-5.4': {
     modelId: 'gpt-5.4',

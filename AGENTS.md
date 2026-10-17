@@ -10,7 +10,7 @@ This document establishes the architectural invariants, engineering standards, v
 
 * **Monorepo**: Managed with Turborepo and npm workspaces (`npm@10.8.2`).
 * **Architecture**: Strict Hexagonal Architecture (Domain, Application, Infrastructure, CLI, Dashboard).
-* **Tech Stack**: TypeScript (ESM), Node.js >= 20, Mozaik v4 (`@mozaik-ai/core`), `node:sqlite`, React 18/19, Vite, Tailwind CSS.
+* **Tech Stack**: TypeScript (ESM), Node.js >= 22.5.0, Mozaik v4 (`@mozaik-ai/core`), `node:sqlite`, React 18/19, Vite, Tailwind CSS.
 
 ---
 

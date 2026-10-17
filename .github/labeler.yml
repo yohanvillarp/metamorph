@@ -1,0 +1,37 @@
+# .github/labeler.yml
+# Configuration for actions/labeler@v5 in Metamorph monorepo
+
+'area: catalogs':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/@nikelyh/domain/src/entities/catalogs/**'
+
+'area: domain':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/@nikelyh/domain/**'
+
+'area: application':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/@nikelyh/application/**'
+
+'area: infrastructure':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/@nikelyh/infrastructure/**'
+
+'area: cli':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/@nikelyh/cli/**'
+
+'area: dashboard':
+  - changed-files:
+      - any-glob-to-any-file: 'apps/dashboard/**'
+
+'area: ci':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+
+'area: documentation':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - '**/*.md'

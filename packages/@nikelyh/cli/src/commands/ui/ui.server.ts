@@ -15,7 +15,7 @@ import {
   ConfigStore,
 } from '@nikelyh/infrastructure';
 import { MigrationRunner } from '@nikelyh/application';
-import { presentMissingApiKey } from '../run/run.presenter';
+import { hasLlmCredentials, presentMissingApiKey } from '../run/run.presenter';
 
 function createUiTools(shadowBase: string) {
   return [
@@ -37,8 +37,7 @@ export async function startUiServer(desiredPort: number): Promise<void> {
     const open = (await import('open')).default;
     const port = await getPort({ port: desiredPort });
 
-    const hasApiKey = process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
-    if (!hasApiKey) {
+    if (!hasLlmCredentials()) {
       spinner.stop();
       presentMissingApiKey();
       process.exit(1);

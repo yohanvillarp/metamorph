@@ -67,3 +67,31 @@ export interface ApplyMigrationResponse {
   branch?: string;
   message: string;
 }
+
+export interface SupportedFrameworkItem {
+  value: string;
+  label: string;
+  group: 'frontend' | 'backend';
+  icon?: string;
+}
+
+export interface SupportedCatalogsResponse {
+  frameworks: SupportedFrameworkItem[];
+  migrations: Record<string, string[]>;
+}
+
+export interface ShadowFileEntry {
+  path: string;
+  status: 'added' | 'modified' | 'deleted';
+}
+
+export interface ShadowFilesResponse {
+  runId: string;
+  files: ShadowFileEntry[];
+}
+
+export interface ShadowDiffResponse {
+  file: string;
+  original: string | null;
+  modified: string | null;
+}

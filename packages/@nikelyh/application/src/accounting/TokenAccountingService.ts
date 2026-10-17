@@ -19,6 +19,7 @@ export interface RecordUsageParams {
   promptText?: string;
   completionText?: string;
   producerId?: string;
+  isMock?: boolean;
 }
 
 /**
@@ -44,17 +45,28 @@ export class TokenAccountingService {
     } = params;
 
     let runId = params.runId;
-    if (!runId && planId) {
+    let plan = null;
+    if (planId) {
       try {
-        const plan = await this.repository.getPlan(planId);
-        runId = plan?.runId || planId;
+        plan = await this.repository.getPlan(planId);
+        if (!runId) {
+          runId = plan?.runId || planId;
+        }
       } catch {
-        runId = planId;
+        if (!runId) {
+          runId = planId;
+        }
       }
     }
     if (!runId) {
       runId = 'default-run';
     }
+
+    const isMock = Boolean(
+      params.isMock ||
+      modelId === 'mock' ||
+      (plan && plan.isMock)
+    );
 
     let promptTokens = tokenUsage?.promptTokens ?? 0;
     let completionTokens = tokenUsage?.completionTokens ?? 0;
@@ -68,7 +80,7 @@ export class TokenAccountingService {
     }
 
     const totalTokens = promptTokens + completionTokens;
-    const costUsd = calculateTokenCost(modelId, promptTokens, completionTokens);
+    const costUsd = isMock ? 0 : calculateTokenCost(modelId, promptTokens, completionTokens);
 
     const record: TokenUsageRecord = {
       runId,
@@ -79,6 +91,7 @@ export class TokenAccountingService {
       completionTokens,
       totalTokens,
       costUsd,
+      isMock,
       timestamp: new Date(),
     };
 
@@ -99,6 +112,7 @@ export class TokenAccountingService {
           completionTokens,
           totalTokens,
           costUsd,
+          isMock,
         } as SemanticEventPayloads.TokensConsumed,
       }, producerId);
     } catch {

@@ -1,4 +1,4 @@
-import { Cpu, HardDrive, LayoutDashboard, Radio } from 'lucide-react';
+import { Cpu, FileDiff, HardDrive, LayoutDashboard, Radio } from 'lucide-react';
 import type { Tab } from '@/entities/migration';
 
 interface DashboardNavProps {
@@ -32,6 +32,12 @@ export const DashboardNav = ({ activeTab, onSelectTab }: DashboardNavProps) => {
         className={`neo-btn flex items-center gap-2 ${activeTab === 'events' ? 'bg-neo-primary text-neo-primary-text translate-x-[2px] translate-y-[2px] shadow-none' : ''}`}
       >
         <Radio size={18} /> Event Log
+      </button>
+      <button
+        onClick={() => onSelectTab('diff')}
+        className={`neo-btn flex items-center gap-2 ${activeTab === 'diff' ? 'bg-neo-primary text-neo-primary-text translate-x-[2px] translate-y-[2px] shadow-none' : ''}`}
+      >
+        <FileDiff size={18} /> Diff Viewer
       </button>
     </nav>
   );

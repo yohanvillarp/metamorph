@@ -3,7 +3,7 @@ import type { MigrationPlan, Tab, TaskItem, MigrationEventItem } from '@/entitie
 import { SWARM_AGENTS, classifySwarmAgent, type SwarmAgentId } from '@/entities/migration/agents';
 import { apiClient } from '@/shared/api/apiClient';
 
-export const TABS: Tab[] = ['overview', 'swarm', 'queue', 'events'];
+export const TABS: Tab[] = ['overview', 'swarm', 'queue', 'events', 'diff'];
 
 export function tabFromHash(): Tab {
   const value = window.location.hash.replace(/^#/, '').toLowerCase();

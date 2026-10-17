@@ -275,6 +275,87 @@ This is the root NestJS module. It must:
   return '';
 }
 
+// ── Hono Target ────────────────────────────────────────────────────────────
+
+export function analyzeHonoTarget(shadowRoot: string): StructureIssue[] {
+  const issues: StructureIssue[] = [
+    ...leftoverDependencyImports(shadowRoot, /@nestjs\//, 'NestJS'),
+    ...leftoverDependencyImports(shadowRoot, /^express$/, 'Express'),
+    ...leftoverDependencyImports(shadowRoot, /^fastify$/, 'Fastify'),
+    ...leftoverScripts(shadowRoot, /\bnest\b/, 'package.json still runs NestJS scripts; Hono target must not depend on nest CLI'),
+  ];
+
+  const main = readIfExists(
+    path.join(shadowRoot, 'src', 'main.ts'),
+    path.join(shadowRoot, 'src', 'index.ts'),
+    path.join(shadowRoot, 'src', 'server.ts'),
+    path.join(shadowRoot, 'src', 'app.ts'),
+    path.join(shadowRoot, 'main.ts'),
+    path.join(shadowRoot, 'index.ts'),
+    path.join(shadowRoot, 'server.ts'),
+    path.join(shadowRoot, 'app.ts'),
+  );
+
+  if (!main) {
+    issues.push({
+      filePath: path.join(shadowRoot, 'src', 'index.ts'),
+      errors: ['Missing Hono entry point. Create src/index.ts (or main.ts/server.ts/app.ts) that creates new Hono(), registers routes, and calls serve().'],
+    });
+    return issues;
+  }
+
+  if (!/new\s+Hono\s*\(|from\s+['"]hono['"]|require\s*\(\s*['"]hono['"]\s*\)/.test(main.content)) {
+    issues.push({
+      filePath: main.filePath,
+      errors: ['Entry file does not instantiate Hono. The Hono target must import { Hono } from "hono" and create new Hono().'],
+    });
+  }
+
+  if (!/serve\s*\(/.test(main.content) && !/export/.test(main.content)) {
+    issues.push({
+      filePath: main.filePath,
+      errors: ['Entry file neither calls serve() from "@hono/node-server" nor exports the app. The server will not start.'],
+    });
+  }
+
+  if (/NestFactory|@nestjs\//.test(main.content)) {
+    issues.push({
+      filePath: main.filePath,
+      errors: ['Entry still references NestFactory or @nestjs imports. Replace with new Hono() bootstrap.'],
+    });
+  }
+
+  if (/express\(\s*\)|from\s+['"]express['"]/.test(main.content)) {
+    issues.push({
+      filePath: main.filePath,
+      errors: ['Entry still references Express. Replace with new Hono() bootstrap.'],
+    });
+  }
+
+  if (/fastify\(\s*\)|Fastify\(\s*\)|from\s+['"]fastify['"]/.test(main.content)) {
+    issues.push({
+      filePath: main.filePath,
+      errors: ['Entry still references Fastify. Replace with new Hono() bootstrap.'],
+    });
+  }
+
+  return issues;
+}
+
+export function honoFileHint(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, '/');
+  if (/\/(main|index|server|app)\.(t|j)s$/.test(normalized) && !/\.spec\./.test(normalized)) {
+    return `
+This is the Hono entry. It must:
+1. Import { Hono } from 'hono' and create the app with new Hono()
+2. Register routes with app.get(), app.post(), or mount sub-apps with app.route()
+3. Call serve({ fetch: app.fetch, port }) from '@hono/node-server' or export the app
+Do not leave NestFactory.create(), express(), or Fastify() calls.
+`;
+  }
+  return '';
+}
+
 // ── Plugin Exports ──────────────────────────────────────────────────────────
 
 export const expressTargetPlugin: MigrationPlugin = {
@@ -346,6 +427,31 @@ export const nestjsTargetPlugin: MigrationPlugin = {
       path.join(shadowRoot, 'main.ts'),
       path.join(shadowRoot, 'app.ts'),
       path.join(shadowRoot, 'index.ts'),
+    ];
+  },
+};
+
+export const honoTargetPlugin: MigrationPlugin = {
+  id: 'target-hono',
+  target: 'hono',
+  layer: 'backend',
+  fileHint(filePath) {
+    return honoFileHint(filePath);
+  },
+  verifyShadow(shadowRoot) {
+    return analyzeHonoTarget(shadowRoot);
+  },
+  repairTargets(shadowRoot) {
+    return [
+      path.join(shadowRoot, 'package.json'),
+      path.join(shadowRoot, 'src', 'main.ts'),
+      path.join(shadowRoot, 'src', 'index.ts'),
+      path.join(shadowRoot, 'src', 'server.ts'),
+      path.join(shadowRoot, 'src', 'app.ts'),
+      path.join(shadowRoot, 'main.ts'),
+      path.join(shadowRoot, 'index.ts'),
+      path.join(shadowRoot, 'server.ts'),
+      path.join(shadowRoot, 'app.ts'),
     ];
   },
 };

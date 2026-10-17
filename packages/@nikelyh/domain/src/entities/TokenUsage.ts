@@ -20,6 +20,7 @@ export interface TokenUsageRecord {
   completionTokens: number;
   totalTokens: number;
   costUsd: number;
+  isMock?: boolean;
   timestamp?: Date;
 }
 
@@ -45,6 +46,7 @@ export interface MigrationCostSummary {
   promptTokens: number;
   completionTokens: number;
   totalCostUsd: number;
+  isMock?: boolean;
   byAgentRole: Record<AgentRole, AgentRoleCost>;
   byModel: Record<string, ModelCostBreakdown>;
 }

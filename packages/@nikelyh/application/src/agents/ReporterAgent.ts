@@ -277,12 +277,25 @@ const draftDuringInstallProcessor = {
     });
 
     const tools = participant.getTools();
-    if (tools.length === 0) {
+    const config = runtime.state.config;
+    const isMock = Boolean(
+      config?.model === 'mock' ||
+      config?.mock ||
+      process.env.METAMORPH_MOCK === '1' ||
+      process.env.METAMORPH_MOCK === 'true'
+    );
+    if (tools.length === 0 || isMock) {
       board.reportStarted = true;
       const fs = await import('node:fs');
       const path = await import('node:path');
       fs.writeFileSync(path.join(shadowPath, 'MIGRATION.md'), draft, 'utf-8');
-      log(participant.getId(), p.planId, 'Reporter wrote a fallback MIGRATION.md (no file tools on the agent).');
+      log(
+        participant.getId(),
+        p.planId,
+        isMock
+          ? 'Reporter wrote a fallback MIGRATION.md in mock mode.'
+          : 'Reporter wrote a fallback MIGRATION.md (no file tools on the agent).'
+      );
       return;
     }
 

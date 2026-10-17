@@ -6,6 +6,7 @@ import { OverviewStats } from '@/widgets/overview/OverviewStats';
 import { CostTracker } from '@/widgets/CostTracker';
 import { MigrationQueue } from '@/widgets/queue/MigrationQueue';
 import { LiveSwarm } from '@/widgets/swarm-view/LiveSwarm';
+import { DiffViewer } from '@/widgets/diff-viewer/DiffViewer';
 import { useDashboardState } from '../model/useDashboardState';
 import { useDashboardActions } from '../model/useDashboardActions';
 import { DashboardHeader } from './DashboardHeader';
@@ -93,6 +94,10 @@ export const DashboardPage = () => {
             )}
 
             {state.activeTab === 'events' && <EventLog events={state.events} />}
+
+            {state.activeTab === 'diff' && state.latestPlan && (
+              <DiffViewer runId={state.latestPlan.runId} />
+            )}
           </main>
         </>
       ) : (

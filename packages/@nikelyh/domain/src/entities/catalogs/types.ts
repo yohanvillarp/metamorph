@@ -22,9 +22,23 @@ export interface RuleSection {
   groups?: RuleGroup[];
 }
 
+export const SUPPORTED_FRAMEWORKS = [
+  'react',
+  'next',
+  'vue',
+  'angular',
+  'svelte',
+  'express',
+  'fastify',
+  'nestjs',
+  'hono',
+] as const;
+
+export type FrameworkId = (typeof SUPPORTED_FRAMEWORKS)[number];
+
 export interface MigrationCatalogEntry {
-  source: string;
-  target: string;
+  source: FrameworkId;
+  target: FrameworkId;
   description: string;
   architecturalRules: string[];
   examples?: { before: string; after: string; description: string }[];

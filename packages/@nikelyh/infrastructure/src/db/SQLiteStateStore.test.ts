@@ -192,4 +192,48 @@ describe('SQLiteStateStore', () => {
     assert.equal(summary.totalCostUsd, 0);
     assert.equal(summary.byAgentRole.worker.tokens, 0);
   });
+
+  test('saves and retrieves plan with isMock flag', async () => {
+    const { store } = createTestStore();
+    const plan: MigrationPlan = {
+      id: 'plan-mock',
+      runId: 'run-mock-1',
+      targetPath: './src',
+      profile: { source: 'react', target: 'next' },
+      createdAt: new Date(),
+      phase: 'files',
+      isMock: true,
+      tasks: [{ filePath: 'src/App.tsx', status: 'pending' }],
+    };
+
+    await store.savePlan(plan);
+    const retrieved = await store.getPlan('plan-mock');
+
+    assert.ok(retrieved);
+    assert.equal(retrieved.id, 'plan-mock');
+    assert.equal(retrieved.isMock, true);
+  });
+
+  test('records token usage with isMock flag and marks summary', async () => {
+    const { store } = createTestStore();
+    const runId = 'run-mock-telemetry';
+    const planId = 'plan-mock-telemetry';
+
+    await store.recordTokenUsage({
+      runId,
+      planId,
+      agentRole: 'worker',
+      modelId: 'mock',
+      promptTokens: 420,
+      completionTokens: 180,
+      totalTokens: 600,
+      costUsd: 0,
+      isMock: true,
+    });
+
+    const summary = await store.getCostSummary(runId);
+    assert.equal(summary.isMock, true);
+    assert.equal(summary.totalTokens, 600);
+    assert.equal(summary.totalCostUsd, 0);
+  });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@nikelyh/metamorph",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Autonomous multi-agent migration and refactoring engine powered by Mozaik v4",
   "license": "GPL-3.0-or-later",
   "repository": {
@@ -20,6 +20,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "files": [
     "dist",
     "bin"
@@ -31,13 +34,13 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.7.2",
-    "@mozaik-ai/core": "^4.0.6",
+    "@inquirer/prompts": "^8.7.3",
+    "@mozaik-ai/core": "^4.1.0",
     "chalk": "^6.0.1",
     "commander": "^15.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1",
+    "express": "^5.3.0",
     "fs-extra": "^11.4.1",
     "get-port": "^7.2.0",
     "open": "^11.0.4",
@@ -46,6 +49,7 @@
   },
   "devDependencies": {
     "@nikelyh/application": "*",
+    "@nikelyh/domain": "*",
     "@nikelyh/infrastructure": "*",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

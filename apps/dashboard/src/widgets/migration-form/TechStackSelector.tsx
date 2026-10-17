@@ -1,5 +1,5 @@
 import { Cpu, ArrowRight } from 'lucide-react';
-import { FRAMEWORKS } from '@/entities/migration';
+import { useSupportedCatalogs, resolveFrameworkIcon } from '@/entities/migration';
 
 interface TechStackSelectorProps {
   targetPath: string;
@@ -22,10 +22,15 @@ export const TechStackSelector = ({
   setToFw,
   hasHighConfidence,
 }: TechStackSelectorProps) => {
-  const selectedFromGroup = FRAMEWORKS.find((f) => f.value === fromFw)?.group;
-  const compatibleToFrameworks = FRAMEWORKS.filter(
-    (f) => f.group === selectedFromGroup && f.value !== fromFw
-  );
+  const { frameworks, migrations } = useSupportedCatalogs();
+
+  const validTargets = migrations[fromFw];
+  const compatibleToFrameworks = validTargets
+    ? frameworks.filter((f) => validTargets.includes(f.value))
+    : frameworks.filter((f) => {
+        const fromGroup = frameworks.find((x) => x.value === fromFw)?.group;
+        return f.group === fromGroup && f.value !== fromFw;
+      });
 
   return (
     <div
@@ -59,7 +64,7 @@ export const TechStackSelector = ({
               <option value="" disabled>
                 Select source...
               </option>
-              {FRAMEWORKS.map((fw) => (
+              {frameworks.map((fw) => (
                 <option key={fw.value} value={fw.value}>
                   {fw.label}
                 </option>
@@ -67,7 +72,7 @@ export const TechStackSelector = ({
             </select>
             <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none w-6 h-6">
               <img
-                src={FRAMEWORKS.find((f) => f.value === fromFw)?.icon}
+                src={resolveFrameworkIcon(fromFw)}
                 alt=""
                 className="w-full h-full object-contain"
                 onError={(e) => (e.currentTarget.style.display = 'none')}
@@ -85,7 +90,7 @@ export const TechStackSelector = ({
 
             <div className="z-10 w-20 h-20 bg-white border-4 border-neo-border shadow-[4px_4px_0px_0px_var(--neo-shadow)] flex items-center justify-center rounded p-3 transition-transform hover:scale-110 bg-grid-pattern">
               <img
-                src={FRAMEWORKS.find((f) => f.value === fromFw)?.icon}
+                src={resolveFrameworkIcon(fromFw)}
                 alt={fromFw}
                 className="w-full h-full object-contain"
                 onError={(e) => (e.currentTarget.style.display = 'none')}
@@ -107,7 +112,7 @@ export const TechStackSelector = ({
             <div className="z-10 w-20 h-20 bg-white border-4 border-neo-border shadow-[4px_4px_0px_0px_var(--neo-shadow)] flex items-center justify-center rounded p-3 transition-transform hover:scale-110 bg-grid-pattern">
               <img
                 key={toFw}
-                src={FRAMEWORKS.find((f) => f.value === toFw)?.icon}
+                src={resolveFrameworkIcon(toFw)}
                 alt={toFw}
                 className="w-full h-full object-contain animate-in zoom-in duration-300"
                 onError={(e) => (e.currentTarget.style.display = 'none')}
@@ -139,7 +144,7 @@ export const TechStackSelector = ({
             </select>
             <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none w-6 h-6">
               <img
-                src={FRAMEWORKS.find((f) => f.value === toFw)?.icon}
+                src={resolveFrameworkIcon(toFw)}
                 alt=""
                 className="w-full h-full object-contain"
                 onError={(e) => (e.currentTarget.style.display = 'none')}

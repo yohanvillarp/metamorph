@@ -1,17 +1,11 @@
 import {
-  Agent,
-  createAgent as createMozaikAgent,
-  SituationContext,
-  SituationSpecification,
-} from '@mozaik-ai/core';
-import {
   formatCatalogRules,
   MigrationPlan,
   resolveMigrationCatalog,
   SemanticEventName,
   SemanticEventPayloads,
-  TokenUsage,
 } from '@nikelyh/domain';
+import { InferenceFactory } from '@nikelyh/infrastructure';
 import { collectFileHints } from '../../migration/registry';
 import { join, leave, resolveRuntime, runLoop, sendEvent } from '../../runtime';
 import { buildNeighborContext } from '../../context/NeighborContext';
@@ -19,18 +13,6 @@ import { buildNeighborContext } from '../../context/NeighborContext';
 export interface ReviewParsedResult {
   status: 'APPROVED' | 'REJECTED' | 'FATAL_MISMATCH';
   errors: string[];
-}
-
-class WhenReviewTokensReported extends SituationSpecification {
-  isSatisfiedBy({ event, participant }: SituationContext): boolean {
-    return event.type === 'inference.completed' && event.producerId === participant.getId();
-  }
-}
-
-class WhenReviewCompleted extends SituationSpecification {
-  isSatisfiedBy({ event, participant }: SituationContext): boolean {
-    return event.type === 'model.answer' && event.producerId === participant.getId();
-  }
 }
 
 export function buildReviewPrompt(filePath: string, diff: string, plan?: MigrationPlan | null): string {
@@ -52,16 +34,6 @@ export function buildReviewPrompt(filePath: string, diff: string, plan?: Migrati
 
   prompt += `\n${buildNeighborContext(filePath)}\nDiff or new content of the file under review:\n${diff}\nCompare the diff to imported modules in the evidence. If props/exports do not match, REJECT with a specific error. You MUST respond in JSON.`;
   return prompt;
-}
-
-function parseReviewResult(answerText: string | null): ReviewParsedResult | null {
-  if (!answerText) return null;
-  try {
-    return JSON.parse(answerText) as ReviewParsedResult;
-  } catch (e) {
-    console.error(`[Reviewer] Failed to parse JSON:`, e);
-    return null;
-  }
 }
 
 async function dispatchReviewResult(
@@ -109,163 +81,83 @@ async function dispatchReviewResult(
 
 export async function runReviewInference(
   payload: SemanticEventPayloads.FileMigrated,
-  prompt: string
+  prompt: string,
+  producerId?: string
 ): Promise<void> {
-  return new Promise((originalResolve) => {
-    let isDone = false;
-    const resolve = () => {
-      if (!isDone) {
-        isDone = true;
-        originalResolve();
-      }
-    };
+  const runtime = resolveRuntime();
+  const config = runtime.state.config;
+  const modelToUse =
+    config?.reviewerModel ||
+    config?.model ||
+    process.env.METAMORPH_REVIEWER_MODEL ||
+    process.env.METAMORPH_MODEL ||
+    'gpt-5.4';
+  const timeoutMs = config?.inferenceTimeoutMs || 120000;
+  const isMock = Boolean(
+    config?.model === 'mock' ||
+    config?.mock ||
+    process.env.METAMORPH_MOCK === '1' ||
+    process.env.METAMORPH_MOCK === 'true'
+  );
 
-    const runtime = resolveRuntime();
-    const config = runtime.state.config;
-    const modelToUse =
-      config?.reviewerModel ||
-      config?.model ||
-      process.env.METAMORPH_REVIEWER_MODEL ||
-      process.env.METAMORPH_MODEL ||
-      'gpt-5.4';
-    const timeoutMs = config?.inferenceTimeoutMs || 120000;
+  const plan = await runtime.state.repository.getPlan(payload.planId);
+  const inferenceAdapter =
+    runtime.state.inferenceAdapter ||
+    InferenceFactory.create(config, { join, leave, runLoop });
 
-    let capturedUsage: TokenUsage | null = null;
-    const reviewerId = `Reviewer-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const tempAgent = createMozaikAgent({
-      name: reviewerId,
-      capabilities: ['code_review', 'inference'],
-      instruction:
-        'You are a staff engineer reviewing a migrated file against its neighbors. Reject if public props/emits do not match imported modules, if a router file re-implements a screen instead of importing it, or if a screen was hollowed out. UI that lived under src/pages in a SPA is not a Next Pages Router file. Do not reject a file just because it lacks every catalog feature. FATAL_MISMATCH only for an unfixable paradigm break.',
-      tools: [],
-      handlers: [
-        {
-          specification: new WhenReviewTokensReported(),
-          processor: {
-            async apply({ event }) {
-              const output = event.payload as { tokenUsage?: TokenUsage };
-              if (output?.tokenUsage) {
-                capturedUsage = output.tokenUsage;
-              }
-            },
-          },
-        },
-        {
-          specification: new WhenReviewCompleted(),
-          processor: {
-            async apply({ event, participant: tempParticipant }) {
-              if (isDone) return;
-              try {
-                const answerItem = (event.payload as Record<string, any>).answer;
-                const answerText = answerItem?.content?.text || answerItem?.text || null;
-                const result = parseReviewResult(answerText);
-                if (result) {
-                  await dispatchReviewResult(result, payload, tempParticipant.getId());
-                }
-                sendEvent({
-                  type: SemanticEventName.TOKENS_REPORTED,
-                  producerId: tempParticipant.getId(),
-                  occurredAt: new Date(),
-                  payload: {
-                    planId: payload.planId,
-                    agentRole: 'reviewer',
-                    modelId: modelToUse,
-                    tokenUsage: capturedUsage,
-                    promptText: prompt,
-                    completionText: answerText || '',
-                  } as SemanticEventPayloads.TokensReported,
-                }, tempParticipant.getId());
-              } catch (e) {
-                console.error(`[ReviewerAgent:${tempParticipant.getId()}] Error completing review:`, e);
-              } finally {
-                leave(tempParticipant);
-                resolve();
-              }
-            },
-          },
-        },
-      ],
+  const participantId = producerId || runtime.state.dispatcherId || 'System';
+  console.log(`[ReviewerAgent:${participantId}] Starting inference for ${payload.filePath} with model ${modelToUse}...`);
+
+  try {
+    const response = await inferenceAdapter.runReviewerInference({
+      planId: payload.planId,
+      filePath: payload.filePath,
+      prompt,
+      diff: payload.diff,
+      modelId: modelToUse,
+      timeoutMs,
+      sourceFramework: plan?.profile.source,
+      targetFramework: plan?.profile.target,
     });
 
-    join(tempAgent);
+    await dispatchReviewResult(
+      { status: response.status, errors: response.errors },
+      payload,
+      participantId
+    );
 
-    const timer = setTimeout(async () => {
-      if (!isDone) {
-        console.error(`[ReviewerAgent:${reviewerId}] ⏰ TIMEOUT after ${Math.round(timeoutMs / 1000)}s.`);
-        await runtime.state.repository.updateTaskStatus(
-          payload.planId,
-          payload.filePath,
-          'failed',
-          `Inference timed out after ${Math.round(timeoutMs / 1000)}s`
-        );
-        sendEvent({
-          type: SemanticEventName.FILE_FAILED,
-          producerId: tempAgent.getId(),
-          occurredAt: new Date(),
-          payload: {
-            planId: payload.planId,
-            filePath: payload.filePath,
-            reason: `Inference timed out after ${Math.round(timeoutMs / 1000)}s`,
-          },
-        }, tempAgent.getId());
-        leave(tempAgent);
-        resolve();
-      }
-    }, timeoutMs);
-
-    try {
-      console.log(`[ReviewerAgent:${reviewerId}] Starting inference for ${payload.filePath} with model ${modelToUse}...`);
-      const loopResult = runLoop(tempAgent.getId(), prompt, {
-        model: modelToUse,
-        context: tempAgent.getMemory().getContext(),
-        structuredOutput: {
-          name: 'review_result',
-          schema: {
-            type: 'object',
-            properties: {
-              status: { type: 'string', enum: ['APPROVED', 'REJECTED', 'FATAL_MISMATCH'] },
-              errors: { type: 'array', items: { type: 'string' } },
-            },
-            required: ['status', 'errors'],
-            additionalProperties: false,
-          },
-          strict: true,
-        },
-      }) as unknown as Promise<void> | undefined;
-
-      if (loopResult && typeof loopResult.catch === 'function') {
-        loopResult.catch(async (error: unknown) => {
-          clearTimeout(timer);
-          console.error(`[ReviewerAgent:${reviewerId}] Async review error:`, error);
-          if (!isDone) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', errorMessage || 'Review inference network error');
-            sendEvent({
-              type: SemanticEventName.FILE_FAILED,
-              producerId: tempAgent.getId(),
-              occurredAt: new Date(),
-              payload: { planId: payload.planId, filePath: payload.filePath, reason: errorMessage || 'Review inference network error' },
-            }, tempAgent.getId());
-            leave(tempAgent);
-            resolve();
-          }
-        });
-      }
-    } catch (error: unknown) {
-      clearTimeout(timer);
-      console.error(`[ReviewerAgent:${reviewerId}] Sync error:`, error);
-      if (!isDone) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        runtime.state.repository.updateTaskStatus(payload.planId, payload.filePath, 'failed', errorMessage || 'Sync error');
-        sendEvent({
-          type: SemanticEventName.FILE_FAILED,
-          producerId: tempAgent.getId(),
-          occurredAt: new Date(),
-          payload: { planId: payload.planId, filePath: payload.filePath, reason: errorMessage || 'Sync error' },
-        }, tempAgent.getId());
-        leave(tempAgent);
-        resolve();
-      }
-    }
-  });
+    sendEvent({
+      type: SemanticEventName.TOKENS_REPORTED,
+      producerId: participantId,
+      occurredAt: new Date(),
+      payload: {
+        planId: payload.planId,
+        agentRole: 'reviewer',
+        modelId: modelToUse,
+        tokenUsage: response.tokenUsage,
+        promptText: prompt,
+        completionText: response.rawAnswerText || '',
+        isMock,
+      } as SemanticEventPayloads.TokensReported,
+    }, participantId);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[ReviewerAgent:${participantId}] Error in review inference:`, error);
+    await runtime.state.repository.updateTaskStatus(
+      payload.planId,
+      payload.filePath,
+      'failed',
+      errorMessage || 'Review inference error'
+    );
+    sendEvent({
+      type: SemanticEventName.FILE_FAILED,
+      producerId: participantId,
+      occurredAt: new Date(),
+      payload: {
+        planId: payload.planId,
+        filePath: payload.filePath,
+        reason: errorMessage || 'Review inference error',
+      },
+    }, participantId);
+  }
 }

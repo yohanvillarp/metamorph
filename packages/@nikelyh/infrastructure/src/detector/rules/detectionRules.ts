@@ -1,14 +1,14 @@
-import type { ArchitectureCategory, RouterVariant } from '@nikelyh/domain';
+import type { ArchitectureCategory, FrameworkId, RouterVariant } from '@nikelyh/domain';
 
 export interface FrameworkRule {
-  framework: string;
+  framework: FrameworkId;
   category: ArchitectureCategory;
   packageKeys: string[];
   devPackageKeys?: string[];
   configPrefixes: string[];
   routerVariants?: RouterVariant[];
   subsumes?: string[]; // frameworks or packages this framework dominates
-  suggestedTargets: string[];
+  suggestedTargets?: FrameworkId[];
 }
 
 export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
@@ -19,7 +19,6 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     configPrefixes: ['next.config'],
     routerVariants: ['next-app-router', 'next-pages-router'],
     subsumes: ['react', 'react-dom'],
-    suggestedTargets: ['react', 'vue', 'angular', 'svelte'],
   },
   {
     framework: 'react',
@@ -27,7 +26,6 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     packageKeys: ['react'],
     configPrefixes: ['vite.config', 'webpack.config'],
     routerVariants: ['react-router'],
-    suggestedTargets: ['next', 'vue', 'angular', 'svelte'],
   },
   {
     framework: 'vue',
@@ -36,7 +34,6 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     devPackageKeys: ['@vitejs/plugin-vue'],
     configPrefixes: ['vue.config', 'vite.config'],
     routerVariants: ['vue-router'],
-    suggestedTargets: ['react', 'next', 'angular', 'svelte'],
   },
   {
     framework: 'svelte',
@@ -45,7 +42,6 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     devPackageKeys: ['@sveltejs/vite-plugin-svelte'],
     configPrefixes: ['svelte.config', 'vite.config'],
     routerVariants: ['sveltekit'],
-    suggestedTargets: ['react', 'next', 'vue', 'angular'],
   },
   {
     framework: 'angular',
@@ -54,7 +50,6 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     devPackageKeys: ['@angular/cli', '@angular-devkit/build-angular'],
     configPrefixes: ['angular.json'],
     routerVariants: ['angular-router'],
-    suggestedTargets: ['react', 'next', 'vue', 'svelte'],
   },
   {
     framework: 'nestjs',
@@ -62,7 +57,6 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     packageKeys: ['@nestjs/core', '@nestjs/common'],
     configPrefixes: ['nest-cli.json'],
     subsumes: ['express', 'fastify', '@nestjs/platform-express', '@nestjs/platform-fastify'],
-    suggestedTargets: ['express', 'fastify'],
   },
   {
     framework: 'express',
@@ -70,7 +64,6 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     packageKeys: ['express'],
     devPackageKeys: ['@types/express'],
     configPrefixes: [],
-    suggestedTargets: ['fastify', 'nestjs'],
   },
   {
     framework: 'fastify',
@@ -78,6 +71,12 @@ export const FRAMEWORK_DETECTION_RULES: FrameworkRule[] = [
     packageKeys: ['fastify'],
     devPackageKeys: ['fastify-plugin'],
     configPrefixes: [],
-    suggestedTargets: ['express', 'nestjs'],
+  },
+  {
+    framework: 'hono',
+    category: 'backend-api',
+    packageKeys: ['hono'],
+    devPackageKeys: ['@hono/node-server'],
+    configPrefixes: [],
   },
 ];

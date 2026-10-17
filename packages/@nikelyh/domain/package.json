@@ -5,6 +5,11 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
+    "test": "tsx --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "tsx": "^4.23.15"
   }
 }

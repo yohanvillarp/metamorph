@@ -1,5 +1,24 @@
 # @nikelyh/metamorph
 
+## 2.3.0
+
+### Minor Changes
+
+- 8c7c3c0: feat(cli): add --dry-run flag to preview migration plan without LLM inference
+- 44e4f11: feat: add Hono as a supported backend migration target with full CLI and Web Dashboard parity (bidirectional support for Express, Fastify, and NestJS)
+- 3f6d785: feat(architecture): establish domain as single source of truth for supported frameworks and migration catalogs with dynamic API
+- be6e2e8: feat(dashboard): integrate official documentation, website, and discord community links in header and repository documentation
+- 674b684: feat: deterministic mock LLM provider for zero-cost offline development and automated testing (--mock, --model mock)
+- 41abc60: feat(dashboard): add shadow workspace diff viewer tab
+  
+  Adds a new "Diff Viewer" tab to the dashboard that displays file-level diffs between the original project and the shadow workspace. Includes file tree sidebar grouped by status (added/modified/deleted) and unified diff view with syntax highlighting.
+
+### Patch Changes
+
+- 5edbf2b: Add multi-OS (Linux, Windows) and Node LTS matrix, architectural invariant verification, and CLI smoke tests in GitHub Actions CI.
+- 7c75e76: ci: add automated changeset reminder bot and PR path labeler workflow with `area: catalogs` categorization
+- 7e4ad54: Synchronize dependencies (@mozaik-ai/core 4.1.0, express 5.3.0, tooling) and configure grouped updates in Dependabot.
+
 ## 2.2.0
 
 ### Minor Changes

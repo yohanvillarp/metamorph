@@ -6,18 +6,39 @@ updates:
     target-branch: "develop"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
     commit-message:
       prefix: "chore"
       include: "scope"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"] # Evitar breaking changes automáticos
+    groups:
+      dev-dependencies:
+        patterns:
+          - "eslint*"
+          - "@typescript-eslint*"
+          - "vite*"
+          - "@vitejs*"
+          - "turbo"
+      core-dependencies:
+        patterns:
+          - "@mozaik-ai/*"
+          - "express"
+          - "ts-morph"
+          - "dotenv"
+          - "cors"
 
-  # Mantiene actualizadas las Actions del propio CI
+  # Mantiene actualizadas las Actions del propio CI en un único PR agrupado
   - package-ecosystem: "github-actions"
     directory: "/"
     target-branch: "develop"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 2
     commit-message:
       prefix: "chore"
+    groups:
+      actions:
+        patterns:
+          - "*"

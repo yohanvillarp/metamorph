@@ -17,6 +17,8 @@ export function findMigrationCatalogEntry(source: string, target: string) {
 
 export * from './types';
 export * from './compose';
+export * from './metadata';
+export * from './queries';
 export { ALL_MIGRATION_RULES } from './layers/all';
 export { FRONTEND_LAYER_RULES } from './layers/frontend';
 export { BACKEND_LAYER_RULES } from './layers/backend';

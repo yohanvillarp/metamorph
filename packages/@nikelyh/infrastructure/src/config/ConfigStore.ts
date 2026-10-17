@@ -103,6 +103,15 @@ export class ConfigStore {
 
     if (env.METAMORPH_MODEL) {
       envConfig.model = env.METAMORPH_MODEL;
+      if (env.METAMORPH_MODEL === 'mock') {
+        envConfig.mock = true;
+      }
+    }
+    if (env.METAMORPH_MOCK === '1' || env.METAMORPH_MOCK === 'true') {
+      envConfig.mock = true;
+      if (!env.METAMORPH_MODEL) {
+        envConfig.model = 'mock';
+      }
     }
     if (env.METAMORPH_REVIEWER_MODEL) {
       envConfig.reviewerModel = env.METAMORPH_REVIEWER_MODEL;

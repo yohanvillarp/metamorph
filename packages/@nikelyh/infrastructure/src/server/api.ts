@@ -1,4 +1,4 @@
-import { StateRepository, resolveMigrationCatalog } from '@nikelyh/domain';
+import { StateRepository, resolveMigrationCatalog, getSupportedFrameworks, getSupportedMigrations } from '@nikelyh/domain';
 import { MigrationIntegrator } from '../workspace/MigrationIntegrator.js';
 import type { Request, Response } from 'express';
 
@@ -121,6 +121,179 @@ export async function createApiServer(
         profiles,
         monorepo: monorepo.isMonorepo ? monorepo : null,
         primary: profiles.length > 0 ? profiles[0].framework : null
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: String(error) });
+      }
+    }
+  });
+
+  app.get('/api/catalogs/supported', async (_req: Request, res: Response) => {
+    try {
+      res.json({
+        frameworks: getSupportedFrameworks(),
+        migrations: getSupportedMigrations(),
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: String(error) });
+      }
+    }
+  });
+
+  // ─── SHADOW DIFF ENDPOINTS ─────────────────────────────
+
+  const IGNORED_DIRS = ['node_modules', '.git', '.metamorph', 'dist', 'build', 'out', 'coverage', '.next', '.turbo'];
+
+  app.get('/api/shadow/:runId/files', async (req: Request, res: Response) => {
+    try {
+      const { readdirSync, readFileSync, statSync, existsSync } = await import('node:fs');
+      const { resolve, join, relative, sep } = await import('node:path');
+
+      const runId = String(req.params.runId);
+      if (/[/\\]|\.\./.test(runId)) {
+        res.status(400).json({ error: 'Invalid run ID' });
+        return;
+      }
+      const shadowBase = resolve('.metamorph/shadow');
+      const shadowDir = join(shadowBase, runId);
+
+      if (!existsSync(shadowDir)) {
+        res.status(404).json({ error: `Shadow workspace not found for run: ${runId}` });
+        return;
+      }
+
+      // Find the original targetPath from the plan
+      const plans = await store.getAllPlans();
+      const plan = plans.find((p) => p.runId === runId);
+      const originalDir = plan?.targetPath ? resolve(plan.targetPath) : null;
+
+      const files: Array<{ path: string; status: 'added' | 'modified' | 'deleted' }> = [];
+      const MAX_COMPARE_SIZE = 2 * 1024 * 1024; // 2 MB — skip content comparison for larger files
+
+      function walkDir(dir: string, base: string) {
+        const entries = readdirSync(dir);
+        for (const entry of entries) {
+          if (IGNORED_DIRS.includes(entry)) continue;
+          const full = join(dir, entry);
+          const rel = relative(base, full);
+          const stat = statSync(full);
+          if (stat.isDirectory()) {
+            walkDir(full, base);
+          } else {
+            const origPath = originalDir ? join(originalDir, rel) : null;
+            const originalExists = origPath ? existsSync(origPath) : false;
+            if (!originalExists) {
+              files.push({ path: rel, status: 'added' });
+            } else if (stat.size <= MAX_COMPARE_SIZE) {
+              // Compare file contents to avoid marking unchanged files as modified
+              const shadowContent = readFileSync(full);
+              const origContent = readFileSync(origPath!);
+              if (!shadowContent.equals(origContent)) {
+                files.push({ path: rel, status: 'modified' });
+              }
+            } else {
+              // Large file — compare by size as a heuristic
+              const origStat = statSync(origPath!);
+              if (stat.size !== origStat.size) {
+                files.push({ path: rel, status: 'modified' });
+              }
+            }
+          }
+        }
+      }
+
+      walkDir(shadowDir, shadowDir);
+
+      // Check for deleted files (in original but not in shadow)
+      if (originalDir && existsSync(originalDir)) {
+        function walkOriginal(dir: string, base: string) {
+          const entries = readdirSync(dir);
+          for (const entry of entries) {
+            if (IGNORED_DIRS.includes(entry)) continue;
+            const full = join(dir, entry);
+            const rel = relative(base, full);
+            const stat = statSync(full);
+            if (stat.isDirectory()) {
+              walkOriginal(full, base);
+            } else if (!existsSync(join(shadowDir, rel))) {
+              files.push({ path: rel, status: 'deleted' });
+            }
+          }
+        }
+        walkOriginal(originalDir, originalDir);
+      }
+
+      res.json({ runId, files });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: String(error) });
+      }
+    }
+  });
+
+  app.get('/api/shadow/:runId/diff', async (req: Request, res: Response) => {
+    try {
+      const { readFileSync, statSync, existsSync } = await import('node:fs');
+      const { resolve, join, sep } = await import('node:path');
+
+      const runId = String(req.params.runId);
+      if (/[/\\]|\.\./.test(runId)) {
+        res.status(400).json({ error: 'Invalid run ID' });
+        return;
+      }
+      const filePath = String(req.query.file || '');
+      if (!filePath) {
+        res.status(400).json({ error: 'Missing required query parameter: file' });
+        return;
+      }
+
+      const shadowBase = resolve('.metamorph/shadow');
+      const shadowDir = join(shadowBase, runId);
+      const shadowFile = resolve(shadowDir, filePath);
+
+      // Path traversal guard — resolved path must stay within the shadow directory
+      if (!shadowFile.startsWith(shadowDir + sep)) {
+        res.status(400).json({ error: 'Invalid file path' });
+        return;
+      }
+
+      const plans = await store.getAllPlans();
+      const plan = plans.find((p) => p.runId === runId);
+      const originalDir = plan?.targetPath ? resolve(plan.targetPath) : null;
+      const originalFile = originalDir ? resolve(originalDir, filePath) : null;
+
+      // Guard original file path traversal too
+      if (originalFile && originalDir && !originalFile.startsWith(originalDir + sep)) {
+        res.status(400).json({ error: 'Invalid file path' });
+        return;
+      }
+
+      const MAX_DIFF_SIZE = 5 * 1024 * 1024; // 5 MB
+
+      let shadowContent: string | null = null;
+      if (existsSync(shadowFile)) {
+        const size = statSync(shadowFile).size;
+        shadowContent = size <= MAX_DIFF_SIZE ? readFileSync(shadowFile, 'utf-8') : '[File too large to display]';
+      }
+
+      let originalContent: string | null = null;
+      if (originalFile && existsSync(originalFile)) {
+        const size = statSync(originalFile).size;
+        originalContent = size <= MAX_DIFF_SIZE ? readFileSync(originalFile, 'utf-8') : '[File too large to display]';
+      }
+
+      res.json({
+        file: filePath,
+        original: originalContent,
+        modified: shadowContent,
       });
     } catch (error: unknown) {
       if (error instanceof Error) {

@@ -61,6 +61,68 @@ describe('CLI Contract & Build Integrity', () => {
     assert.ok(runOptionsContent.includes('--concurrency <number>'), 'Expected --concurrency option in run command');
     assert.ok(runOptionsContent.includes('--timeout <seconds>'), 'Expected --timeout option in run command');
     assert.ok(runOptionsContent.includes('--retries <number>'), 'Expected --retries option in run command');
+    assert.ok(runOptionsContent.includes('--mock'), 'Expected --mock option in run command');
+  });
+
+  test('--mock flag and credentials bypass work seamlessly', async () => {
+    const runOptionsPath = path.join(cliDir, 'src/commands/run/run.options.ts');
+    const runOptionsContent = fs.readFileSync(runOptionsPath, 'utf-8');
+    assert.ok(runOptionsContent.includes('--mock'), 'Expected --mock in run.options.ts');
+    assert.ok(runOptionsContent.includes('mock?: boolean'), 'Expected mock?: boolean in RunCommandOptions');
+
+    const presenterPath = path.join(cliDir, 'src/commands/run/run.presenter.ts');
+    const { hasLlmCredentials, presentMockNotice } = await import('./commands/run/run.presenter.js');
+    assert.ok(typeof presentMockNotice === 'function', 'Expected presentMockNotice in presenter');
+
+    // With zero env credentials, mock config still returns true
+    const savedOpenAi = process.env.OPENAI_API_KEY;
+    const savedAnthropic = process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+
+    try {
+      assert.equal(hasLlmCredentials({ model: 'mock', concurrency: 3, inferenceTimeoutMs: 120000, maxRetries: 2, maxIntegrationRounds: 4, disabledAgents: [] }), true);
+      assert.equal(hasLlmCredentials({ model: 'gpt-5.4', mock: true, concurrency: 3, inferenceTimeoutMs: 120000, maxRetries: 2, maxIntegrationRounds: 4, disabledAgents: [] }), true);
+
+      process.env.METAMORPH_MOCK = '1';
+      assert.equal(hasLlmCredentials(), true);
+      delete process.env.METAMORPH_MOCK;
+
+      assert.equal(hasLlmCredentials({ model: 'gpt-5.4', concurrency: 3, inferenceTimeoutMs: 120000, maxRetries: 2, maxIntegrationRounds: 4, disabledAgents: [] }), false);
+    } finally {
+      if (savedOpenAi) process.env.OPENAI_API_KEY = savedOpenAi;
+      if (savedAnthropic) process.env.ANTHROPIC_API_KEY = savedAnthropic;
+    }
+  });
+
+  test('--dry-run flag is registered and presenter exists', () => {
+    const runOptionsPath = path.join(cliDir, 'src/commands/run/run.options.ts');
+    const runOptionsContent = fs.readFileSync(runOptionsPath, 'utf-8');
+    assert.ok(runOptionsContent.includes('--dry-run'), 'Expected --dry-run option in run command');
+    assert.ok(runOptionsContent.includes('dryRun'), 'Expected dryRun in RunCommandOptions interface');
+
+    const presenterPath = path.join(cliDir, 'src/commands/run/run.presenter.ts');
+    const presenterContent = fs.readFileSync(presenterPath, 'utf-8');
+    assert.ok(presenterContent.includes('presentDryRun'), 'Expected presentDryRun function in presenter');
+
+    const commandPath = path.join(cliDir, 'src/commands/run/run.command.ts');
+    const commandContent = fs.readFileSync(commandPath, 'utf-8');
+    assert.ok(commandContent.includes('options.dryRun'), 'Expected dry-run branch in executeRunAction');
+    assert.ok(commandContent.includes('presentDryRun'), 'Expected presentDryRun call in command');
+  });
+
+  test('--dry-run guards against empty inspectProject result', () => {
+    const commandPath = path.join(cliDir, 'src/commands/run/run.command.ts');
+    const commandContent = fs.readFileSync(commandPath, 'utf-8');
+    assert.ok(commandContent.includes('if (!profile)'), 'Expected guard for undefined profile in dry-run path');
+  });
+
+  test('SUPPORTED_MIGRATIONS is dynamically derived from @nikelyh/domain', async () => {
+    const { SUPPORTED_MIGRATIONS } = await import('./commands/run/run.options.js');
+    assert.ok(SUPPORTED_MIGRATIONS.express.includes('hono'));
+    assert.ok(SUPPORTED_MIGRATIONS.hono.includes('fastify'));
+    assert.ok(SUPPORTED_MIGRATIONS.react.includes('next'));
+    assert.ok(SUPPORTED_MIGRATIONS.next.includes('react'));
   });
 });
 

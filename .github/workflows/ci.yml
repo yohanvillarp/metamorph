@@ -16,11 +16,14 @@ on:
       - '.agents/**'
       - 'plans/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  commitlint:
-    name: Commitlint PR Validation
+  lint-and-arch:
+    name: Static Analysis & Architecture
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -31,34 +34,113 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Validate Conventional Commits
+        if: github.event_name == 'pull_request'
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
-  validate-and-test:
-    name: Typecheck, Test & Build
-    runs-on: ubuntu-latest
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Verify Architectural Invariants
+        run: npm run check:architecture
+
+  test-matrix:
+    name: Test Matrix (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: [22, 24]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Setup Node.js 22 (LTS)
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
-      - name: Install dependencies (clean install)
+      - name: Install dependencies
         run: npm ci
 
       - name: Typecheck Monorepo
         run: npm run typecheck
 
-      - name: Run Unit Tests
+      - name: Run Test Suites
         run: npm test
+
+  build:
+    name: Monorepo Build & Asset Verification
+    needs: [lint-and-arch]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build Monorepo (Turborepo)
         run: npm run build
+
+      - name: Verify CLI Bundle & Public Assets
+        run: |
+          test -f packages/@nikelyh/cli/dist/index.js
+          test -f packages/@nikelyh/cli/dist/public/index.html
+
+  smoke-test:
+    name: CLI Smoke Tests
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Monorepo
+        run: npm run build
+
+      - name: Run CLI Smoke Tests
+        run: npm run test:smoke
+
+  ci-status:
+    name: CI Checks Completed
+    needs: [lint-and-arch, test-matrix, build, smoke-test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Verify All Required Jobs Passed
+        run: |
+          if [[ "${{ needs.lint-and-arch.result }}" != "success" ]] || \
+             [[ "${{ needs.test-matrix.result }}" != "success" ]] || \
+             [[ "${{ needs.build.result }}" != "success" ]] || \
+             [[ "${{ needs.smoke-test.result }}" != "success" ]]; then
+            echo "One or more CI jobs failed."
+            exit 1
+          fi
+          echo "All CI jobs completed successfully."

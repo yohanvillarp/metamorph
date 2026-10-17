@@ -75,7 +75,11 @@ export class MigrationIntegrator {
   public resolveGitRoot(targetPath: string): string | null {
     try {
       const root = this.git(['rev-parse', '--show-toplevel'], targetPath).trim();
-      return root || null;
+      if (!root) return null;
+      const resolved = path.resolve(root);
+      return typeof fs.realpathSync.native === 'function'
+        ? fs.realpathSync.native(resolved)
+        : fs.realpathSync(resolved);
     } catch {
       return null;
     }

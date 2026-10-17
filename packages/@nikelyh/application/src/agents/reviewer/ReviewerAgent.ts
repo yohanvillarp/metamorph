@@ -115,7 +115,7 @@ const reviewFileProcessor = {
       const runtime = resolveRuntime();
       const plan = await runtime.state.repository.getPlan(payload.planId);
       const prompt = buildReviewPrompt(payload.filePath, payload.diff, plan);
-      await runReviewInference(payload, prompt);
+      await runReviewInference(payload, prompt, participantId);
     });
   },
 };

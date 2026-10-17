@@ -25,11 +25,21 @@ Este repositorio utiliza el modelo estándar de Git Flow:
     Todos los commits deben seguir la convención. Al hacer `git commit` se abrirá tu editor con nuestra plantilla (revisar `.gitmessage`).
     Ejemplo: `feat(cli): add new parallel processing flag`
 
-3.  **Abre un Pull Request (PR)**:
+3.  **Genera un Changeset (Versionado y Changelog)**:
+    Si tu PR modifica código de paquetes (`packages/@nikelyh/*` o `apps/dashboard/*`), genera un changeset:
+    ```bash
+    npm run changeset
+    ```
+    Sigue las instrucciones interactivas para elegir el/los paquete(s) afectados y el nivel de incremento (`patch` para correcciones, `minor` para nuevas características).
+    - **Cambios internos / Refactorización**: Si tu PR contiene limpieza de código o cambios internos que no ameritan un release en npm, ejecuta `npx changeset --empty` o añade la etiqueta `skip-changeset` a tu PR.
+    - Si el PR solo modifica documentación o tests, no es necesario un changeset.
+
+4.  **Abre un Pull Request (PR)**:
     Sube tu rama y abre un PR en GitHub apuntando **hacia la rama `develop`** (NO hacia `main`).
     ```bash
     git push origin feature/nombre-de-tu-feature
     ```
+    Nuestros flujos automatizados asignarán las etiquetas pertinentes (`area: catalogs`, `area: domain`, etc.), etiquetas de tamaño de PR (`size/S`, `size/M`, `size/L`) y nuestro bot de Changeset verificará la presencia de tu release con una previsualización instantánea.
     Elige la plantilla de Pull Request adecuada desde `.github/PULL_REQUEST_TEMPLATE/` (o usa la predeterminada):
     - `feature.md`: Nuevas características y capacidades
     - `bugfix.md`: Corrección de errores con RCA y pruebas de regresión
@@ -39,10 +49,10 @@ Este repositorio utiliza el modelo estándar de Git Flow:
     - `architecture.md`: Refactorización arquitectónica, límites y migraciones de esquema
     - `perf_optimization.md`: Cuellos de botella de rendimiento, benchmarks y profiling
 
-4.  **Revisión y CI**:
+5.  **Revisión y CI**:
     Nuestras GitHub Actions correrán validaciones, linters y tests automáticamente. Una vez aprobado y en verde, se hará merge a `develop`.
 
-5.  **Pase a Producción (`main`)**:
+6.  **Pase a Producción (`main`)**:
     Periódicamente, el equipo core creará un Pull Request desde `develop` hacia `main` para lanzar una nueva versión (Release).
 
 ## Entorno Local

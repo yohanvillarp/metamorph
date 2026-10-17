@@ -97,6 +97,7 @@ export namespace SemanticEventPayloads {
     tokenUsage?: TokenUsage | null;
     promptText?: string;
     completionText?: string;
+    isMock?: boolean;
   }
 
   export interface TokensConsumed {
@@ -108,5 +109,6 @@ export namespace SemanticEventPayloads {
     completionTokens: number;
     totalTokens: number;
     costUsd: number;
+    isMock?: boolean;
   }
 }

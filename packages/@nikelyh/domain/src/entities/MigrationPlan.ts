@@ -94,6 +94,11 @@ export interface MigrationPlan {
   appliedBranch?: string;
 
   /**
+   * Indicates whether this plan was executed using the mock inference provider.
+   */
+  isMock?: boolean;
+
+  /**
    * Creation date of the plan.
    */
   createdAt: Date;

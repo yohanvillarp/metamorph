@@ -10,9 +10,14 @@ import { ShadowWorkspace } from './ShadowWorkspace';
 describe('MigrationIntegrator', () => {
   const tmpDirs: string[] = [];
 
+  function toNativePath(p: string): string {
+    return typeof fs.realpathSync.native === 'function' ? fs.realpathSync.native(p) : fs.realpathSync(p);
+  }
+
   function createTmpDir(): string {
-    const dir = path.join(os.tmpdir(), `metamorph-integ-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    fs.mkdirSync(dir, { recursive: true });
+    const rawDir = path.join(os.tmpdir(), `metamorph-integ-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    fs.mkdirSync(rawDir, { recursive: true });
+    const dir = toNativePath(rawDir);
     tmpDirs.push(dir);
     return dir;
   }
@@ -52,7 +57,7 @@ describe('MigrationIntegrator', () => {
     execFileSync('git', ['init'], { cwd: tmp, stdio: 'ignore' });
     const detected = integrator.resolveGitRoot(tmp);
     assert.ok(detected);
-    assert.equal(path.resolve(detected), path.resolve(tmp));
+    assert.equal(toNativePath(detected), toNativePath(tmp));
   });
 
   test('isIgnoredByGit returns true for gitignored paths', () => {

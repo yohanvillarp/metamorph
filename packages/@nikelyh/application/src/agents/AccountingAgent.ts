@@ -46,6 +46,7 @@ export function createAccountingAgent(): Agent {
                 promptText: payload.promptText,
                 completionText: payload.completionText,
                 producerId: event.producerId,
+                isMock: payload.isMock,
               });
             } catch (error) {
               console.error('[AccountingAgent] Error processing token accounting:', error);

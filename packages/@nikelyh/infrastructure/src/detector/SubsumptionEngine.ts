@@ -1,4 +1,4 @@
-import type { ProjectProfile } from '@nikelyh/domain';
+import { getTargetsForFramework, type FrameworkId, type ProjectProfile } from '@nikelyh/domain';
 import type { ManifestAnalysis } from './ManifestInspector';
 import type { StructureAnalysis } from './StructureInspector';
 import { FRAMEWORK_DETECTION_RULES, type FrameworkRule } from './rules/detectionRules';
@@ -135,7 +135,7 @@ export function evaluateAndDisambiguate(
       confidence: Math.min(c.score, 100),
       evidence: c.evidence,
       subsumedDependencies: c.subsumed,
-      suggestedTargets: c.rule.suggestedTargets,
+      suggestedTargets: (c.rule.suggestedTargets ?? getTargetsForFramework(c.rule.framework)) as FrameworkId[],
     };
   });
 }

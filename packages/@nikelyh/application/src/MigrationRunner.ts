@@ -1,9 +1,17 @@
 import { randomUUID } from 'node:crypto';
-import { StateRepository, MigrationPlan, SemanticEventName, SemanticEventPayloads, PackageManagerType, MetamorphConfig } from '@nikelyh/domain';
-import { ShadowWorkspace, inspectManifest } from '@nikelyh/infrastructure';
+import {
+  StateRepository,
+  MigrationPlan,
+  SemanticEventName,
+  SemanticEventPayloads,
+  PackageManagerType,
+  MetamorphConfig,
+  InferencePort,
+} from '@nikelyh/domain';
+import { ShadowWorkspace, inspectManifest, InferenceFactory } from '@nikelyh/infrastructure';
 import { Tool } from '@mozaik-ai/core';
 import { bootstrapMetamorph } from './index';
-import { sendEvent, resolveRuntime } from './runtime';
+import { sendEvent, resolveRuntime, join, leave, runLoop } from './runtime';
 
 export interface MigrationRequest {
   targetPath: string;
@@ -28,12 +36,19 @@ export class MigrationRunner {
   private tools: Tool[];
   public readonly workspace: ShadowWorkspace;
   private config?: MetamorphConfig;
+  private inferenceAdapter?: InferencePort;
   private initialized = false;
 
-  constructor(store: StateRepository, tools: Tool[], config?: MetamorphConfig) {
+  constructor(
+    store: StateRepository,
+    tools: Tool[],
+    config?: MetamorphConfig,
+    inferenceAdapter?: InferencePort
+  ) {
     this.store = store;
     this.tools = tools;
     this.config = config;
+    this.inferenceAdapter = inferenceAdapter;
     this.workspace = new ShadowWorkspace();
   }
 
@@ -43,7 +58,14 @@ export class MigrationRunner {
    */
   private ensureInitialized() {
     if (!this.initialized) {
-      bootstrapMetamorph(this.store, this.tools, this.config);
+      if (!this.inferenceAdapter) {
+        this.inferenceAdapter = InferenceFactory.create(this.config, {
+          join,
+          leave,
+          runLoop,
+        });
+      }
+      bootstrapMetamorph(this.store, this.tools, this.config, this.inferenceAdapter);
       this.initialized = true;
     } else if (this.config) {
       resolveRuntime().state.config = { ...this.config };
@@ -70,6 +92,12 @@ export class MigrationRunner {
     const planId = `plan_${randomUUID()}`;
     const manifest = inspectManifest(request.targetPath);
     const resolvedPackageManager = request.packageManager || manifest.packageManager || 'npm';
+    const isMock = Boolean(
+      this.config?.model === 'mock' ||
+      this.config?.mock ||
+      process.env.METAMORPH_MOCK === '1' ||
+      process.env.METAMORPH_MOCK === 'true'
+    );
 
     const plan: MigrationPlan = {
       id: planId,
@@ -81,6 +109,7 @@ export class MigrationRunner {
       tasks: [
         { filePath: 'system:package_manager', status: 'pending' }
       ],
+      isMock,
       createdAt: new Date(),
     };
     await this.store.savePlan(plan);

@@ -1,5 +1,5 @@
 import { defineRuntime, RuntimeState } from '@mozaik-ai/core';
-import { StateRepository, MetamorphConfig, DEFAULT_METAMORPH_CONFIG } from '@nikelyh/domain';
+import { StateRepository, MetamorphConfig, DEFAULT_METAMORPH_CONFIG, InferencePort } from '@nikelyh/domain';
 
 export interface ReportNote {
   filePath: string;
@@ -27,10 +27,16 @@ export class MetamorphState extends RuntimeState {
   readonly retryCounts = new Map<string, number>();
   readonly integrationWatchdogs = new Map<string, ReturnType<typeof setInterval>>();
   config: MetamorphConfig;
+  inferenceAdapter?: InferencePort;
 
-  constructor(public readonly repository: StateRepository, config?: MetamorphConfig) {
+  constructor(
+    public readonly repository: StateRepository,
+    config?: MetamorphConfig,
+    inferenceAdapter?: InferencePort
+  ) {
     super();
     this.config = config ? { ...config } : { ...DEFAULT_METAMORPH_CONFIG };
+    this.inferenceAdapter = inferenceAdapter;
   }
 
   journal(planId: string): PlanJournal {

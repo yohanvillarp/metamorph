@@ -25,6 +25,7 @@ interface PlanRow {
   applied_at?: string | null;
   applied_branch?: string | null;
   package_manager?: string | null;
+  is_mock?: number;
 }
 
 interface TaskRow {
@@ -52,6 +53,7 @@ interface TokenUsageRow {
   completion_tokens: number;
   total_tokens: number;
   cost_usd: number;
+  is_mock?: number;
   timestamp: string;
 }
 
@@ -89,7 +91,8 @@ export class SQLiteStateStore implements StateRepository {
         rules_json TEXT,
         created_at TEXT,
         integration_rounds INTEGER DEFAULT 0,
-        phase TEXT
+        phase TEXT,
+        is_mock INTEGER DEFAULT 0
       );
     `);
     
@@ -102,6 +105,7 @@ export class SQLiteStateStore implements StateRepository {
     try { this.db.exec('ALTER TABLE plans ADD COLUMN applied_at TEXT'); } catch (e) {}
     try { this.db.exec('ALTER TABLE plans ADD COLUMN applied_branch TEXT'); } catch (e) {}
     try { this.db.exec("ALTER TABLE plans ADD COLUMN package_manager TEXT DEFAULT 'npm'"); } catch (e) {}
+    try { this.db.exec('ALTER TABLE plans ADD COLUMN is_mock INTEGER DEFAULT 0'); } catch (e) {}
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -135,9 +139,12 @@ export class SQLiteStateStore implements StateRepository {
         completion_tokens INTEGER NOT NULL,
         total_tokens INTEGER NOT NULL,
         cost_usd REAL NOT NULL,
+        is_mock INTEGER DEFAULT 0,
         timestamp TEXT NOT NULL
       );
     `);
+
+    try { this.db.exec('ALTER TABLE token_usage ADD COLUMN is_mock INTEGER DEFAULT 0'); } catch (e) {}
 
     try {
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_token_usage_run ON token_usage(run_id);');
@@ -146,8 +153,8 @@ export class SQLiteStateStore implements StateRepository {
 
   async savePlan(plan: MigrationPlan): Promise<void> {
     const stmtPlan = this.db.prepare(`
-      INSERT OR REPLACE INTO plans (id, run_id, target_path, source_framework, target_framework, rules_json, created_at, integration_rounds, phase, outcome, applied_at, applied_branch, package_manager)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO plans (id, run_id, target_path, source_framework, target_framework, rules_json, created_at, integration_rounds, phase, outcome, applied_at, applied_branch, package_manager, is_mock)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     stmtPlan.run(
@@ -163,7 +170,8 @@ export class SQLiteStateStore implements StateRepository {
       plan.outcome || null,
       plan.appliedAt ? plan.appliedAt.toISOString() : null,
       plan.appliedBranch || null,
-      plan.packageManager || 'npm'
+      plan.packageManager || 'npm',
+      plan.isMock ? 1 : 0
     );
 
     const stmtTask = this.db.prepare(`
@@ -199,6 +207,7 @@ export class SQLiteStateStore implements StateRepository {
       outcome: (planRow.outcome as MigrationPlan['outcome']) || undefined,
       appliedAt: planRow.applied_at ? new Date(planRow.applied_at) : undefined,
       appliedBranch: planRow.applied_branch || undefined,
+      isMock: Boolean(planRow.is_mock),
       tasks: taskRows.map((row) => ({
         filePath: row.file_path,
         status: row.status as TaskStatus,
@@ -270,8 +279,8 @@ export class SQLiteStateStore implements StateRepository {
 
   async recordTokenUsage(record: TokenUsageRecord): Promise<void> {
     const stmt = this.db.prepare(`
-      INSERT INTO token_usage (run_id, plan_id, agent_role, model_id, prompt_tokens, completion_tokens, total_tokens, cost_usd, timestamp)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO token_usage (run_id, plan_id, agent_role, model_id, prompt_tokens, completion_tokens, total_tokens, cost_usd, is_mock, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const timestamp = (record.timestamp || new Date()).toISOString();
     stmt.run(
@@ -283,6 +292,7 @@ export class SQLiteStateStore implements StateRepository {
       record.completionTokens,
       record.totalTokens,
       record.costUsd,
+      record.isMock ? 1 : 0,
       timestamp
     );
   }
@@ -295,6 +305,7 @@ export class SQLiteStateStore implements StateRepository {
 
     const planId = rows.length > 0 ? rows[0].plan_id : '';
     const summary = createEmptyMigrationCostSummary(runId, planId);
+    summary.isMock = rows.some((r) => Boolean(r.is_mock));
 
     for (const row of rows) {
       summary.totalTokens += row.total_tokens;

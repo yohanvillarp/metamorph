@@ -352,6 +352,18 @@ const integrationProcessor = {
 
           join(tempAgent);
           const config = runtime.state.config;
+          const isMock = Boolean(
+            config?.model === 'mock' ||
+            config?.mock ||
+            process.env.METAMORPH_MOCK === '1' ||
+            process.env.METAMORPH_MOCK === 'true'
+          );
+          if (isMock) {
+            console.log('[IntegrationAgent] Skipping LLM repair in mock mode');
+            leave(tempAgent);
+            resolve();
+            return;
+          }
           const modelToUse = config?.model || process.env.METAMORPH_MODEL || "gpt-5.4";
           const repairTimeoutMs = config?.inferenceTimeoutMs || DEFAULT_REPAIR_TIMEOUT_MS;
           const excerpt = build.output.slice(0, 4000);

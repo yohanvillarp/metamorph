@@ -11,6 +11,7 @@ export * from './entities/PricingCatalog';
 
 // Ports
 export * from './ports/StateRepository';
+export * from './ports/InferencePort';
 
 // Events
 export * from './events/SemanticEvents';

@@ -6,11 +6,16 @@
 
   [![npm version](https://img.shields.io/npm/v/@nikelyh/metamorph.svg?style=flat-square&color=blue&logo=npm)](https://www.npmjs.com/package/@nikelyh/metamorph)
   [![Powered by Mozaik](https://img.shields.io/badge/Powered%20by-Mozaik-6366f1.svg?style=flat-square&logo=github)](https://github.com/jigjoy-ai/mozaik)
+  [![Documentation](https://img.shields.io/badge/docs-metamorph.nikelyh.tech-0284c7.svg?style=flat-square&logo=gitbook&logoColor=white)](https://metamorph.nikelyh.tech/docs)
+  [![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/k6CNvBbNHm)
+  [![Website](https://img.shields.io/badge/Website-metamorph.nikelyh.tech-10b981?style=flat-square&logo=google-chrome&logoColor=white)](https://metamorph.nikelyh.tech/)
 
   <p align="center">
     Refactor and migrate your entire codebase with zero risk and zero downtime.<br/>
     Powered by an elite swarm of autonomous agents.<br/><br/>
-    <b><a href="https://metamorph.nikelyh.tech/docs">Read the Full Documentation</a></b> |
+    <b><a href="https://metamorph.nikelyh.tech/docs">Documentation</a></b> |
+    <b><a href="https://discord.gg/k6CNvBbNHm">Discord Community</a></b> |
+    <b><a href="https://metamorph.nikelyh.tech/">Official Website</a></b> |
     <b><a href="./docs/architecture.md">System Architecture</a></b>
   </p>
 
@@ -32,12 +37,14 @@
 
 - **Project Intelligence Engine (PIE)**: Autonomously maps complex codebases, heuristics, dynamic entrypoints, and monorepos (Turborepo, pnpm workspaces, npm/yarn workspaces, Lerna).
 - **Polymorphic Package Manager Engine (PPME)**: Native, lockfile-aware execution adapting cleanly to `npm`, `pnpm`, `yarn`, and `bun`.
-- **Structural Validation Plugins**: Deterministic shadow workspace assertions and repair heuristics for both frontend (Vue, Svelte, Angular) and backend (Express, Fastify, NestJS) migration targets.
+- **Structural Validation Plugins**: Deterministic shadow workspace assertions and repair heuristics for both frontend (Vue, Svelte, Angular) and backend (Express, Fastify, NestJS, Hono) migration targets.
+- **Deterministic Mock LLM Provider**: Offline $0.00 migrations simulating token metrics with zero external API credentials via `--mock`.
+- **Pre-Migration Dry Run**: Preview migration plans, rule sets, and package changes without executing inference via `--dry-run`.
 - **Cascading Configuration System**: Unified hierarchical settings resolution across CLI flags, environment variables, local `.metamorphrc.json`, and global user config (`~/.metamorphrc.json`).
 - **Token Accounting & Cost Estimation**: Live granular token telemetry and cost estimation persisted in SQLite and streamed to the dashboard.
 - **Zero Risk (Shadow Workspace)**: All file mutations and builds occur inside an isolated sandbox (`.metamorph/shadow/<runId>`). Your original code is never touched until you review and apply.
 - **Shadow Verification Build**: Migrations are strictly compiled and verified before completion.
-- **Real-Time Visual Telemetry**: Monitor swarm operations, review feedback, cost metrics, and build diagnostics in real-time via the built-in React dashboard.
+- **Real-Time Visual Telemetry**: Monitor swarm operations, review feedback, cost metrics, shadow diffs, and build diagnostics in real-time via the built-in React dashboard.
 
 ## System Architecture
 
@@ -114,7 +121,7 @@ metamorph ui
 
 ### Other Commands
  
-- `metamorph run [options]`: Runs an automated migration (e.g. `--from <src> --to <target> --workspace <pkg> --disable-agents <list>`).
+- `metamorph run [options]`: Runs an automated migration (e.g. `--from <src> --to <target> --mock --dry-run --workspace <pkg> --disable-agents <list>`).
 - `metamorph config <get|set|list|path>`: Manages persistent cascading configuration (model, concurrency, timeout, retries, disabled agents).
 - `metamorph detect [path]`: Detects frameworks, libraries, package managers, and monorepo workspaces.
 - `metamorph apply <runId> [targetPath]`: Applies a completed migration to your repository, creating a new git branch.
@@ -180,6 +187,14 @@ We welcome contributions! If you'd like to add support for a new framework migra
 3. Commit your Changes (`npm run changeset`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+## Community & Support
+
+- **Discord Server**: Join our [Discord Community](https://discord.gg/k6CNvBbNHm) for real-time discussion, troubleshooting, and direct support.
+- **Documentation**: Explore comprehensive guides and tutorials at [metamorph.nikelyh.tech/docs](https://metamorph.nikelyh.tech/docs).
+- **Official Website**: Learn more at [metamorph.nikelyh.tech](https://metamorph.nikelyh.tech/).
+- **GitHub Discussions**: Share your migration success stories or ask questions in [GitHub Discussions](https://github.com/yohanvillarp/metamorph/discussions).
+- **Issue Tracker**: Report bugs or propose framework targets via [GitHub Issues](https://github.com/yohanvillarp/metamorph/issues).
 
 ---
 <div align="center">

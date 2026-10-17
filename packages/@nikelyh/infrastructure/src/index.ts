@@ -8,3 +8,7 @@ export * from './detector/ProjectDetector.js';
 export * from './tools/LinterTools.js';
 export * from './tools/BuildTools.js';
 export * from './config/ConfigStore.js';
+export * from './inference/MockInferenceAdapter.js';
+export * from './inference/MozaikInferenceAdapter.js';
+export * from './inference/InferenceFactory.js';
+export * from './inference/strategies/index.js';

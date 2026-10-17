@@ -17,7 +17,7 @@ import {
   ConfigStore,
 } from '@nikelyh/infrastructure';
 import { MigrationRunner } from '@nikelyh/application';
-import { MetamorphConfig, MigrationPlan, validateDisabledAgents } from '@nikelyh/domain';
+import { MetamorphConfig, MigrationPlan, validateDisabledAgents, resolveMigrationCatalog } from '@nikelyh/domain';
 import {
   RunCommandOptions,
   SUPPORTED_MIGRATIONS,
@@ -25,12 +25,15 @@ import {
 } from './run.options';
 import {
   logStartupContext,
+  hasLlmCredentials,
+  presentMockNotice,
   presentMissingApiKey,
   presentModelWarning,
   presentMigrationStart,
   presentMigrationSuccess,
   presentMigrationFailure,
   presentCostSummary,
+  presentDryRun,
 } from './run.presenter';
 
 async function resolveTargetDirectory(targetPathArg?: string): Promise<string> {
@@ -100,7 +103,16 @@ async function resolveTargetFramework(from: string, toArg?: string): Promise<str
 
 function parseCliFlags(options: RunCommandOptions): Partial<MetamorphConfig> {
   const cliFlags: Partial<MetamorphConfig> = {};
-  if (options.model) cliFlags.model = options.model;
+  if (options.mock) {
+    cliFlags.mock = true;
+    cliFlags.model = 'mock';
+  }
+  if (options.model) {
+    cliFlags.model = options.model;
+    if (options.model === 'mock') {
+      cliFlags.mock = true;
+    }
+  }
   if (options.reviewerModel) cliFlags.reviewerModel = options.reviewerModel;
   if (options.concurrency) cliFlags.concurrency = parseInt(options.concurrency, 10);
   if (options.timeout) cliFlags.inferenceTimeoutMs = parseInt(options.timeout, 10) * 1000;
@@ -183,13 +195,36 @@ export async function executeRunAction(targetPathArg: string | undefined, option
   const from = await resolveSourceFramework(targetPath, options.from);
   const to = await resolveTargetFramework(from, options.to);
 
+  if (options.dryRun) {
+    const profiles = inspectProject(targetPath);
+    const profile = profiles.find((p) => p.framework === from) ?? profiles[0];
+    if (!profile) {
+      console.log(chalk.red(`\n❌ No framework detected in "${targetPath}". Nothing to dry-run.`));
+      process.exit(1);
+    }
+    const catalog = resolveMigrationCatalog(from, to);
+    if (!catalog) {
+      console.log(chalk.red(`\n❌ No migration catalog found for ${from} -> ${to}.`));
+      process.exit(1);
+    }
+    presentDryRun({ targetPath, from, to, profile, catalog });
+    return;
+  }
+
   const cliFlags = parseCliFlags(options);
   const resolvedConfig = ConfigStore.resolveConfig({ cwd: targetPath, cliFlags });
+  if (
+    resolvedConfig.model === 'mock' ||
+    resolvedConfig.mock ||
+    process.env.METAMORPH_MOCK === '1' ||
+    process.env.METAMORPH_MOCK === 'true'
+  ) {
+    presentMockNotice();
+  }
   presentModelWarning(options.model);
   presentMigrationStart({ targetPath, from, to, config: resolvedConfig });
 
-  const hasApiKey = process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
-  if (!hasApiKey) {
+  if (!hasLlmCredentials(resolvedConfig)) {
     presentMissingApiKey();
     process.exit(1);
   }

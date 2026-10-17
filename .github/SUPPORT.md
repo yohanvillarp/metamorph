@@ -10,6 +10,7 @@ Welcome to the Metamorph community! We want to ensure your experience refactorin
 | :--- | :--- |
 | **Report a failed migration / compiler failure** | Open a [Migration Failure Report](https://github.com/nikelyh/metamorph/issues/new?template=01_migration_failure.yml) |
 | **Report a bug in the CLI or Dashboard** | Open a [Bug Report](https://github.com/nikelyh/metamorph/issues/new?template=02_bug_report.yml) |
+| **Chat with the community & ask quick questions** | Join our [Discord Community](https://discord.gg/k6CNvBbNHm) |
 | **Ask questions about how to migrate a specific framework** | Ask in [GitHub Discussions (Q&A)](https://github.com/nikelyh/metamorph/discussions/categories/q-a) |
 | **Propose a new framework target pair** | Submit a [Target Request](https://github.com/nikelyh/metamorph/issues/new?template=03_target_request.yml) |
 | **Report a detection or monorepo issue** | Open a [Detection Issue](https://github.com/nikelyh/metamorph/issues/new?template=04_detection_issue.yml) |
@@ -42,5 +43,8 @@ metamorph reset
 
 ## Community Resources
 
-- **Documentation & Whitepapers**: Explore our deep-dive architecture docs in [`docs/architecture/`](../docs/architecture/).
+- **Discord Community**: Join our [Discord Server](https://discord.gg/k6CNvBbNHm) for real-time troubleshooting, announcements, and peer support.
+- **Documentation Portal**: Visit [metamorph.nikelyh.tech/docs](https://metamorph.nikelyh.tech/docs) for setup guides, catalogs, and tutorials.
+- **Official Website**: Discover features and use cases at [metamorph.nikelyh.tech](https://metamorph.nikelyh.tech/).
+- **Architecture Whitepapers**: Explore our deep-dive architecture docs in [`docs/architecture/`](../docs/architecture/).
 - **GitHub Discussions**: Share your migration success stories in [Show & Tell](https://github.com/nikelyh/metamorph/discussions).

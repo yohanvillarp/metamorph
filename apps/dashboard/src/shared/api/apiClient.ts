@@ -4,6 +4,9 @@ import type {
   MigrationCostSummary,
   StartMigrationResponse,
   ApplyMigrationResponse,
+  SupportedCatalogsResponse,
+  ShadowFilesResponse,
+  ShadowDiffResponse,
 } from './types';
 
 const API_BASE = '';
@@ -56,6 +59,24 @@ export class DashboardApiClient {
       const err = await res.json().catch(() => ({ error: res.statusText }));
       throw new Error(err.error || 'Failed to apply migration');
     }
+    return res.json();
+  }
+
+  async getSupportedCatalogs(): Promise<SupportedCatalogsResponse> {
+    const res = await fetch(`${API_BASE}/api/catalogs/supported`);
+    if (!res.ok) throw new Error(`Failed to fetch supported catalogs: ${res.statusText}`);
+    return res.json();
+  }
+
+  async getShadowFiles(runId: string): Promise<ShadowFilesResponse> {
+    const res = await fetch(`${API_BASE}/api/shadow/${encodeURIComponent(runId)}/files`);
+    if (!res.ok) throw new Error(`Failed to fetch shadow files: ${res.statusText}`);
+    return res.json();
+  }
+
+  async getShadowDiff(runId: string, filePath: string): Promise<ShadowDiffResponse> {
+    const res = await fetch(`${API_BASE}/api/shadow/${encodeURIComponent(runId)}/diff?file=${encodeURIComponent(filePath)}`);
+    if (!res.ok) throw new Error(`Failed to fetch diff: ${res.statusText}`);
     return res.json();
   }
 }

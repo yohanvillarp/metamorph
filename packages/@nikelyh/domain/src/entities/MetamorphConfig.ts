@@ -19,6 +19,8 @@ export interface MetamorphConfig {
   maxIntegrationRounds: number;
   /** List of auxiliary agent IDs disabled during swarm execution. */
   disabledAgents: AuxiliaryAgentId[];
+  /** Whether to run offline using deterministic mock provider (zero cost, zero API keys). */
+  mock?: boolean;
 }
 
 export type MetamorphConfigKey = keyof MetamorphConfig;
@@ -40,6 +42,8 @@ export const DEFAULT_METAMORPH_CONFIG: MetamorphConfig = {
  * Ref: https://docs.jigjoy.ai/docs/models#bundled-names
  */
 export const MOZAIK_BUNDLED_MODELS = [
+  // Offline Mock
+  'mock',
   // OpenAI
   'gpt-5.4',
   'gpt-5.4-mini',
@@ -70,5 +74,6 @@ export function isMetamorphConfigKey(key: string): key is MetamorphConfigKey {
     'maxRetries',
     'maxIntegrationRounds',
     'disabledAgents',
+    'mock',
   ].includes(key);
 }

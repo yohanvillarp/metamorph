@@ -1,3 +1,5 @@
+import type { FrameworkId } from './catalogs/types';
+
 export type ArchitectureCategory =
   | 'frontend-spa'
   | 'frontend-meta'
@@ -40,7 +42,7 @@ export interface MonorepoContext {
 }
 
 export interface ProjectProfile {
-  framework: string;
+  framework: FrameworkId;
   category: ArchitectureCategory;
   variant: RouterVariant;
   bundler: BundlerType;
@@ -52,7 +54,7 @@ export interface ProjectProfile {
   confidence: number; // 0 - 100
   evidence: string[];
   subsumedDependencies: string[];
-  suggestedTargets: string[];
+  suggestedTargets: FrameworkId[];
 }
 
 export interface DetectedTechnologyLegacy {

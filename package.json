@@ -8,18 +8,24 @@
     "packages/@nikelyh/*"
   ],
   "packageManager": "npm@10.8.2",
+  "engines": {
+    "node": ">=22.5.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:smoke": "node packages/@nikelyh/cli/dist/index.js --help && node packages/@nikelyh/cli/dist/index.js list && node packages/@nikelyh/cli/dist/index.js detect apps/dashboard && node packages/@nikelyh/cli/dist/index.js run apps/dashboard --from react --to next --dry-run",
     "check:architecture": "node scripts/verify-architecture.mjs",
     "bump": "node scripts/bump-version.mjs",
     "bump:patch": "node scripts/bump-version.mjs patch",
     "bump:minor": "node scripts/bump-version.mjs minor",
     "bump:major": "node scripts/bump-version.mjs major",
     "changeset": "changeset",
+    "version:packages": "changeset version && node scripts/sync-cli-version.mjs",
     "release": "turbo run build && changeset publish"
   },
   "lint-staged": {
@@ -33,7 +39,7 @@
     "@commitlint/config-conventional": "^19.0.0",
     "@types/express": "^5.0.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1",
+    "express": "^5.3.0",
     "husky": "^9.0.11",
     "lint-staged": "^17.6.0",
     "turbo": "latest"
