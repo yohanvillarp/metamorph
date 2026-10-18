@@ -10,6 +10,7 @@ import { FolderPicker } from '@/shared/ui/FolderPicker';
 import type { DetectedTech, MonorepoContext } from '@/entities/migration';
 import { TechDetectionBanner } from './TechDetectionBanner';
 import { TechStackSelector } from './TechStackSelector';
+import { PROJECT_LINKS } from '@/shared/config/links';
 
 const API_BASE = '';
 
@@ -78,13 +79,15 @@ export const MigrationForm = ({ onStart, isStarting, startError }: MigrationForm
       <div className="relative z-10 w-full max-w-3xl mx-auto flex flex-col items-center gap-4">
         <header className="w-full text-center">
           <a
-            href="https://github.com/yohanvillarp/metamorph"
+            href={PROJECT_LINKS.website}
             target="_blank"
-            rel="noreferrer"
-            title="Metamorph on GitHub"
+            rel="noreferrer noopener"
+            title="Metamorph Official Website"
             className="inline-flex items-center justify-center gap-3 hover:opacity-80"
           >
-            <img src="/logo_metamorph.png" alt="" className="h-10 w-10 object-contain" />
+            <div className="h-10 w-10 border-2 border-neo-border bg-[#06090e] p-1 shadow-[2px_2px_0px_0px_var(--neo-text)] flex items-center justify-center shrink-0">
+              <img src="/logo.svg" alt="Metamorph" className="h-full w-full object-contain" />
+            </div>
             <span className="text-lg md:text-xl font-black uppercase tracking-widest">Metamorph</span>
           </a>
           <h2 className="mt-4 text-2xl md:text-3xl font-black uppercase tracking-widest leading-none">

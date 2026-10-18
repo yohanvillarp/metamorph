@@ -1,5 +1,11 @@
 # @nikelyh/metamorph
 
+## 2.3.1
+
+### Patch Changes
+
+- 96e7571: feat(branding): integrate official Metamorph SVG logo across dashboard UI and update website portal redirection
+
 ## 2.3.0
 
 ### Minor Changes

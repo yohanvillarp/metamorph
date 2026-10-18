@@ -1,6 +1,4 @@
 <div align="center">
-  <img src="./assets/banner.jpg" alt="Metamorph Banner" width="100%" />
-
   # 🦋 Metamorph
   **The Multi-Agent Migration CLI**
 

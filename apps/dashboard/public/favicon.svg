@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="metamorph-favicon-wing" x1="25" y1="35" x2="100" y2="165" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="35%" stop-color="#00f2fe" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+  </defs>
+  <g>
+    <!-- Forewings -->
+    <path d="M98 84 C84 48 50 26 24 36 C8 42 6 72 24 94 C44 118 80 114 98 92 Z" fill="url(#metamorph-favicon-wing)" fill-opacity="0.8" stroke="#00f2fe" stroke-width="3" stroke-linejoin="round" />
+    <path d="M102 84 C116 48 150 26 176 36 C192 42 194 72 176 94 C156 118 120 114 102 92 Z" fill="url(#metamorph-favicon-wing)" fill-opacity="0.8" stroke="#00f2fe" stroke-width="3" stroke-linejoin="round" />
+    <!-- Hindwings -->
+    <path d="M98 100 C76 112 44 124 42 146 C40 166 64 174 80 160 C94 148 97 126 98 108 Z" fill="url(#metamorph-favicon-wing)" fill-opacity="0.9" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" />
+    <path d="M102 100 C124 112 156 124 158 146 C160 166 136 174 120 160 C106 148 103 126 102 108 Z" fill="url(#metamorph-favicon-wing)" fill-opacity="0.9" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" />
+    <!-- Inner wing contour accents -->
+    <path d="M98 88 C76 68 50 50 36 58" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.85" />
+    <path d="M102 88 C124 68 150 50 164 58" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.85" />
+    <!-- Central Body Core -->
+    <path d="M100 48 C102.5 75 102.5 125 100 152 C97.5 125 97.5 75 100 48 Z" fill="#ffffff" />
+    <!-- Antennae -->
+    <path d="M99 46 Q94 32 84 26" stroke="#00f2fe" stroke-width="2.5" stroke-linecap="round" fill="none" />
+    <path d="M101 46 Q106 32 116 26" stroke="#00f2fe" stroke-width="2.5" stroke-linecap="round" fill="none" />
+    <circle cx="84" cy="26" r="3" fill="#ffffff" />
+    <circle cx="116" cy="26" r="3" fill="#ffffff" />
+    <circle cx="100" cy="48" r="3.5" fill="#00f2fe" />
+  </g>
+</svg>

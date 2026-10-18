@@ -26,7 +26,9 @@ export const DashboardHeader = ({
   return (
     <header className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 mb-8 pb-4 border-b-4 border-neo-border">
       <a href={PROJECT_LINKS.website} target="_blank" rel="noreferrer noopener" title="Metamorph Official Website" className="flex items-center gap-3 hover:opacity-80">
-        <img src="/logo_metamorph.png" alt="" className="h-12 w-12 border-2 border-neo-border bg-white object-contain" />
+        <div className="h-12 w-12 border-2 border-neo-border bg-[#06090e] p-1 shadow-[2px_2px_0px_0px_var(--neo-text)] flex items-center justify-center shrink-0">
+          <img src="/logo.svg" alt="Metamorph" className="h-full w-full object-contain" />
+        </div>
         <div>
           <h1 className="text-3xl font-black uppercase tracking-widest flex items-center gap-2">
             Metamorph
