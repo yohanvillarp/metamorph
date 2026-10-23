@@ -25,7 +25,7 @@ export class BenchmarkController {
     }
 
     try {
-      const result = await this.runnerService.startBenchmark(body, archetype.path);
+      const result = await this.runnerService.startBenchmark(body, archetype.path, archetype.sourceFramework);
       res.status(201).json(result);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);

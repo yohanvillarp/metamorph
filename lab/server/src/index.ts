@@ -20,8 +20,8 @@ app.use(express.json());
 // Services
 const sandboxService = new SandboxService();
 const metricsService = new MetricsService();
-const runnerService = new RunnerService(sandboxService, metricsService);
 const diffService = new DiffService();
+const runnerService = new RunnerService(sandboxService, metricsService, diffService);
 
 // Controllers
 const archetypesController = new ArchetypesController();
