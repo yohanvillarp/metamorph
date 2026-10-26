@@ -1,5 +1,12 @@
 # @nikelyh/metamorph
 
+## 2.3.2
+
+### Patch Changes
+
+- b899162: feat(lab): add Fastify, Hono, NestJS, Vue, Svelte, and Angular archetypes to R&D workbench
+- 8962540: Wire lab runner service to spawn real metamorph CLI migrations against sandbox archetypes
+
 ## 2.3.1
 
 ### Patch Changes
