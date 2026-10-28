@@ -1,19 +1,24 @@
 import { StateRepository, resolveMigrationCatalog, getSupportedFrameworks, getSupportedMigrations } from '@nikelyh/domain';
 import { MigrationIntegrator } from '../workspace/MigrationIntegrator.js';
+import { MigrationEventStream } from './MigrationEventStream.js';
 import type { Request, Response } from 'express';
 
 /**
  * Creates and configures the Express REST API server.
  * This module is framework-agnostic from the caller's perspective:
  * the CLI mounts it, the Dashboard consumes it.
- * 
- * @param store The StateRepository implementation (SQLite).
+ *
+ * @param store The StateRepository implementation (SQLite). Wrap it in
+ *   EventEmittingStateRepository sharing `eventStream` so that writes made by
+ *   the MigrationRunner are pushed to SSE clients as well.
  * @param migrationRunner Optional MigrationRunner for control endpoints.
+ * @param eventStream Broadcaster backing GET /api/events/stream.
  * @returns The configured Express app (not yet listening).
  */
 export async function createApiServer(
   store: StateRepository,
-  migrationRunner?: any
+  migrationRunner?: any,
+  eventStream: MigrationEventStream = new MigrationEventStream()
 ) {
   const express = (await import('express')).default;
   const cors = (await import('cors')).default;
@@ -21,6 +26,12 @@ export async function createApiServer(
   const app = express();
   app.use(cors());
   app.use(express.json());
+
+  // ─── SSE EVENT STREAM ─────────────────────────────────────
+
+  app.get('/api/events/stream', (_req: Request, res: Response) => {
+    eventStream.addClient(res);
+  });
 
   // ─── READ ENDPOINTS (existing) ───────────────────────────
 

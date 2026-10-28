@@ -3,6 +3,8 @@ export * from './tools/AstTools.js';
 export * from './workspace/ShadowWorkspace.js';
 export * from './workspace/MigrationIntegrator.js';
 export * from './server/api.js';
+export * from './server/MigrationEventStream.js';
+export * from './server/EventEmittingStateRepository.js';
 export * from './detector/TechDetector.js';
 export * from './detector/ProjectDetector.js';
 export * from './tools/LinterTools.js';

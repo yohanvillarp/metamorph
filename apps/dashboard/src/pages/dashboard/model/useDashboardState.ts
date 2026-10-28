@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import type { MigrationPlan, Tab, TaskItem, MigrationEventItem } from '@/entities/migration';
+import { useState, useEffect, useMemo } from 'react';
+import type { Tab, TaskItem } from '@/entities/migration';
 import { SWARM_AGENTS, classifySwarmAgent, type SwarmAgentId } from '@/entities/migration/agents';
 import { apiClient } from '@/shared/api/apiClient';
+import { useMigrationEvents } from './useMigrationEvents';
 
 export const TABS: Tab[] = ['overview', 'swarm', 'queue', 'events', 'diff'];
 
@@ -11,8 +12,8 @@ export function tabFromHash(): Tab {
 }
 
 export function useDashboardState() {
-  const [plans, setPlans] = useState<MigrationPlan[]>([]);
-  const [events, setEvents] = useState<MigrationEventItem[]>([]);
+  const { plans, events, isServerOffline, fetchData } = useMigrationEvents();
+
   const [activeTab, setActiveTab] = useState<Tab>(tabFromHash);
 
   const [isStarting, setIsStarting] = useState(false);
@@ -21,9 +22,6 @@ export function useDashboardState() {
   const [isApplying, setIsApplying] = useState(false);
   const [appliedRunId, setAppliedRunId] = useState<string | null>(null);
   const [lastApply, setLastApply] = useState<{ gitUsed: boolean; branch?: string; message: string } | null>(null);
-
-  const [isServerOffline, setIsServerOffline] = useState(false);
-  const consecutiveFailuresRef = useRef(0);
 
   const selectTab = (tab: Tab) => {
     setActiveTab(tab);
@@ -41,35 +39,11 @@ export function useDashboardState() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const [plansData, eventsData] = await Promise.all([
-        apiClient.getPlans(),
-        apiClient.getEvents(),
-      ]);
-      setPlans(plansData);
-      setEvents(eventsData.reverse());
-      consecutiveFailuresRef.current = 0;
-      setIsServerOffline(false);
-    } catch (error) {
-      consecutiveFailuresRef.current += 1;
-      if (consecutiveFailuresRef.current >= 3) {
-        setIsServerOffline(true);
-      }
-      console.error('Error fetching dashboard data:', error);
-    }
-  };
-
   const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 1000);
     const clockInterval = setInterval(() => setCurrentTime(Date.now()), 5000);
-    return () => {
-      clearInterval(interval);
-      clearInterval(clockInterval);
-    };
+    return () => clearInterval(clockInterval);
   }, []);
 
   const latestPlan = plans.length > 0 ? plans[0] : null;
