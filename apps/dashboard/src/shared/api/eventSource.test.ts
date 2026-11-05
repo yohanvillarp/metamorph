@@ -38,11 +38,18 @@ describe('connectMigrationStream', () => {
   it('parses migration and plan frames into typed callbacks', () => {
     const cb = callbacks();
     connectMigrationStream(cb);
-    const event = { eventName: 'worker.started', payload: { filePath: 'src/a.ts' }, timestamp: '2026-10-28T00:00:00.000Z' };
+    const event = { id: 7, eventName: 'worker.started', payload: { filePath: 'src/a.ts' }, timestamp: '2026-10-28T00:00:00.000Z' };
     FakeEventSource.latest.emit('migration', JSON.stringify(event));
     FakeEventSource.latest.emit('plan', JSON.stringify({ reason: 'task', planId: 'plan-1' }));
     expect(cb.onEvent).toHaveBeenCalledWith(event);
     expect(cb.onPlanChange).toHaveBeenCalledWith({ reason: 'task', planId: 'plan-1' });
+  });
+
+  it('drops migration frames without a numeric persisted id (older servers)', () => {
+    const cb = callbacks();
+    connectMigrationStream(cb);
+    FakeEventSource.latest.emit('migration', JSON.stringify({ eventName: 'worker.started', timestamp: 't' }));
+    expect(cb.onEvent).not.toHaveBeenCalled();
   });
 
   it('ignores malformed payloads instead of throwing from the listener', () => {

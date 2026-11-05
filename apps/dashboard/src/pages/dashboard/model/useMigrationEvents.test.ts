@@ -91,13 +91,52 @@ describe('useMigrationEvents streaming', () => {
     expect(api.getEvents).toHaveBeenCalledTimes(3);
   });
 
-  it('appends streamed events after the newest with the next id', async () => {
+  it('appends streamed events under their persisted database id', async () => {
     const { result } = renderHook(() => useMigrationEvents());
     await flush();
     act(() => FakeEventSource.latest.open());
-    act(() => FakeEventSource.latest.emit('migration', JSON.stringify({ eventName: 'worker.completed', payload: {}, timestamp: 't' })));
+    act(() => FakeEventSource.latest.emit('migration', JSON.stringify({ id: 3, eventName: 'worker.completed', payload: {}, timestamp: 't' })));
     expect(result.current.events.map((e) => e.id)).toEqual([1, 2, 3]);
     expect(result.current.events[2].eventName).toBe('worker.completed');
+  });
+
+  it('ignores a streamed event whose id was already hydrated over REST', async () => {
+    const { result } = renderHook(() => useMigrationEvents());
+    await flush();
+    act(() => FakeEventSource.latest.open());
+    act(() => FakeEventSource.latest.emit('migration', JSON.stringify({ id: 2, eventName: 'worker.started', payload: {}, timestamp: 't' })));
+    expect(result.current.events.map((e) => e.id)).toEqual([1, 2]);
+  });
+
+  it('keeps an event streamed while a slow REST refresh is in flight', async () => {
+    const { result } = renderHook(() => useMigrationEvents());
+    await flush();
+    act(() => FakeEventSource.latest.open());
+
+    // The next refresh resolves late, with a snapshot taken before the streamed event.
+    let resolveEvents!: (value: MigrationEventItem[]) => void;
+    api.getEvents.mockImplementationOnce(() => new Promise((resolve) => { resolveEvents = resolve; }));
+    act(() => FakeEventSource.latest.emit('plan', JSON.stringify({ reason: 'reset', planId: null })));
+    act(() => FakeEventSource.latest.emit('migration', JSON.stringify({ id: 3, eventName: 'worker.completed', payload: {}, timestamp: 't' })));
+    expect(result.current.events.map((e) => e.id)).toEqual([1, 2, 3]);
+
+    await act(async () => resolveEvents([...stored]));
+    expect(result.current.events.map((e) => e.id)).toEqual([1, 2, 3]);
+  });
+
+  it('does not duplicate an event delivered through both the stream and an in-flight refresh', async () => {
+    const { result } = renderHook(() => useMigrationEvents());
+    await flush();
+    act(() => FakeEventSource.latest.open());
+
+    let resolveEvents!: (value: MigrationEventItem[]) => void;
+    api.getEvents.mockImplementationOnce(() => new Promise((resolve) => { resolveEvents = resolve; }));
+    act(() => FakeEventSource.latest.emit('plan', JSON.stringify({ reason: 'reset', planId: null })));
+    const streamed: MigrationEventItem = { id: 3, eventName: 'worker.completed', timestamp: 't' };
+    act(() => FakeEventSource.latest.emit('migration', JSON.stringify(streamed)));
+
+    await act(async () => resolveEvents([streamed, ...stored]));
+    expect(result.current.events.map((e) => e.id)).toEqual([1, 2, 3]);
   });
 
   it('coalesces a burst of plan changes into one plans re-fetch', async () => {

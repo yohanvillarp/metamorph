@@ -9,8 +9,8 @@ export interface SSEPlanChange {
   planId: string | null;
 }
 
-/** A streamed event; the persisted row id is not known until the next hydration. */
-export type SSEMigrationEvent = Omit<MigrationEventItem, 'id'>;
+/** A streamed event; carries the persisted row id so clients can dedupe against REST hydration. */
+export type SSEMigrationEvent = MigrationEventItem;
 
 export interface MigrationStreamCallbacks {
   onOpen: () => void;
@@ -44,7 +44,8 @@ export function connectMigrationStream(callbacks: MigrationStreamCallbacks): () 
 
   source.addEventListener('migration', (e: MessageEvent<string>) => {
     const event = parse<SSEMigrationEvent>(e.data);
-    if (event) callbacks.onEvent(event);
+    // An id-less frame (older server) is dropped; the slow re-sync picks it up.
+    if (event && typeof event.id === 'number') callbacks.onEvent(event);
   });
 
   source.addEventListener('plan', (e: MessageEvent<string>) => {

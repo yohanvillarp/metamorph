@@ -5,6 +5,7 @@ import { EventEmittingStateRepository } from './EventEmittingStateRepository';
 import type { MigrationEventStream } from './MigrationEventStream';
 
 const samplePlan = { id: 'plan-1', runId: 'run-1' } as MigrationPlan;
+const persistedRef = { id: 42, timestamp: new Date('2026-10-28T00:00:00.000Z') };
 const sampleEvents = [{ id: 1, eventName: 'migration.started', payload: {}, timestamp: new Date() }];
 const sampleCost = { runId: 'run-1', planId: 'plan-1', totalTokens: 0 } as Awaited<ReturnType<StateRepository['getCostSummary']>>;
 const sampleUsage = { runId: 'run-1', planId: 'plan-1', agentRole: 'worker' } as Parameters<StateRepository['recordTokenUsage']>[0];
@@ -15,7 +16,7 @@ function setup() {
     getPlan: mock.fn(async () => samplePlan),
     getAllPlans: mock.fn(async () => [samplePlan]),
     updateTaskStatus: mock.fn(async () => {}),
-    logEvent: mock.fn(async () => {}),
+    logEvent: mock.fn(async () => persistedRef),
     getEvents: mock.fn(async () => sampleEvents),
     recordTokenUsage: mock.fn(async () => {}),
     getCostSummary: mock.fn(async () => sampleCost),
@@ -48,12 +49,13 @@ describe('EventEmittingStateRepository writes', () => {
     assert.deepEqual(stream.broadcastPlanChange.mock.calls[0].arguments, ['task', 'plan-1']);
   });
 
-  it('logEvent persists first, then broadcasts the same name and payload', async () => {
+  it('logEvent persists first, then broadcasts name, payload, and the persisted row identity', async () => {
     const { inner, stream, store } = setup();
     const payload = { filePath: 'src/a.ts' };
-    await store.logEvent('worker.started', payload);
+    const persisted = await store.logEvent('worker.started', payload);
     assert.deepEqual(inner.logEvent.mock.calls[0].arguments, ['worker.started', payload]);
-    assert.deepEqual(stream.broadcastEvent.mock.calls[0].arguments, ['worker.started', payload]);
+    assert.deepEqual(stream.broadcastEvent.mock.calls[0].arguments, ['worker.started', payload, persistedRef]);
+    assert.deepEqual(persisted, persistedRef);
     assert.equal(stream.broadcastPlanChange.mock.callCount(), 0);
   });
 
@@ -70,6 +72,7 @@ describe('EventEmittingStateRepository writes', () => {
     inner.logEvent.mock.mockImplementation(async () => {
       await new Promise((resolve) => setTimeout(resolve, 5));
       order.push('persisted');
+      return persistedRef;
     });
     stream.broadcastEvent.mock.mockImplementation(() => { order.push('broadcast'); });
     await store.logEvent('migration.started', {});

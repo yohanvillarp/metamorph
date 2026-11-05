@@ -7,7 +7,7 @@ import { MigrationEventStream } from './MigrationEventStream';
 function fakeResponse(options: { writeThrows?: boolean } = {}) {
   const emitter = new EventEmitter();
   const chunks: string[] = [];
-  const state = { destroyed: false, writableEnded: false, ended: false };
+  const state = { destroyed: false, writableEnded: false, ended: false, writableLength: 0 };
   const res = Object.assign(emitter, {
     writeHead: () => res,
     flushHeaders: () => undefined,
@@ -20,10 +20,15 @@ function fakeResponse(options: { writeThrows?: boolean } = {}) {
       state.ended = true;
       return res;
     },
+    destroy: () => {
+      state.destroyed = true;
+      return res;
+    },
   }) as unknown as Response;
   Object.defineProperties(res, {
     destroyed: { get: () => state.destroyed },
     writableEnded: { get: () => state.writableEnded },
+    writableLength: { get: () => state.writableLength },
   });
   return {
     res,
@@ -33,6 +38,8 @@ function fakeResponse(options: { writeThrows?: boolean } = {}) {
     fail: () => emitter.emit('error', new Error('socket hang up')),
   };
 }
+
+const persisted = (id: number) => ({ id, timestamp: new Date('2026-10-28T00:00:00.000Z') });
 
 function frames(chunks: string[]): Array<{ event: string; data: unknown }> {
   return chunks
@@ -53,7 +60,7 @@ describe('MigrationEventStream broadcasting', () => {
     assert.equal(stream.clientCount, 2);
     assert.equal(a.chunks[0], 'retry: 3000\n\n');
 
-    stream.broadcastEvent('worker.started', { filePath: 'src/a.ts' });
+    stream.broadcastEvent('worker.started', { filePath: 'src/a.ts' }, persisted(7));
     stream.broadcastPlanChange('task', 'plan-1');
     stream.broadcastPlanChange('reset');
 
@@ -61,10 +68,11 @@ describe('MigrationEventStream broadcasting', () => {
       const sent = frames(client.chunks);
       assert.equal(sent.length, 3);
       assert.equal(sent[0].event, 'migration');
-      const migration = sent[0].data as { eventName: string; payload: unknown; timestamp: string };
+      const migration = sent[0].data as { id: number; eventName: string; payload: unknown; timestamp: string };
+      assert.equal(migration.id, 7);
       assert.equal(migration.eventName, 'worker.started');
       assert.deepEqual(migration.payload, { filePath: 'src/a.ts' });
-      assert.ok(!Number.isNaN(Date.parse(migration.timestamp)));
+      assert.equal(migration.timestamp, '2026-10-28T00:00:00.000Z');
       assert.deepEqual(sent[1], { event: 'plan', data: { reason: 'task', planId: 'plan-1' } });
       assert.deepEqual(sent[2], { event: 'plan', data: { reason: 'reset', planId: null } });
     }
@@ -79,7 +87,7 @@ describe('MigrationEventStream broadcasting', () => {
     assert.equal(stream.clientCount, 0);
 
     const before = client.chunks.length;
-    stream.broadcastEvent('ignored', {});
+    stream.broadcastEvent('ignored', {}, persisted(1));
     assert.equal(client.chunks.length, before);
     stream.close();
   });
@@ -98,7 +106,24 @@ describe('MigrationEventStream broadcasting', () => {
     stream.addClient(throwing.res);
     assert.equal(stream.clientCount, 1);
 
-    stream.broadcastEvent('worker.started', {});
+    stream.broadcastEvent('worker.started', {}, persisted(1));
+    assert.equal(frames(healthy.chunks).length, 1);
+    stream.close();
+  });
+
+  it('evicts and destroys a client whose socket buffer exceeds the cap, keeping the rest', () => {
+    const stream = new MigrationEventStream(15_000, 64);
+    const slow = fakeResponse();
+    const healthy = fakeResponse();
+    stream.addClient(slow.res);
+    stream.addClient(healthy.res);
+
+    slow.state.writableLength = 65;
+    stream.broadcastEvent('worker.started', {}, persisted(1));
+
+    assert.equal(stream.clientCount, 1);
+    assert.ok(slow.state.destroyed);
+    assert.equal(frames(slow.chunks).length, 0);
     assert.equal(frames(healthy.chunks).length, 1);
     stream.close();
   });
@@ -109,7 +134,7 @@ describe('MigrationEventStream broadcasting', () => {
     stream.addClient(client.res);
     client.state.writableEnded = true;
 
-    stream.broadcastEvent('worker.started', {});
+    stream.broadcastEvent('worker.started', {}, persisted(1));
     assert.equal(stream.clientCount, 0);
     assert.equal(frames(client.chunks).length, 0);
     stream.close();

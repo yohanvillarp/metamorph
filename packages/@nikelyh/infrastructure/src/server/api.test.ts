@@ -81,10 +81,12 @@ describe('API Server SSE Stream Endpoint', () => {
       const first = decoder.decode((await reader.read()).value);
       assert.equal(first, 'retry: 3000\n\n');
 
-      stream.broadcastEvent('worker.started', { filePath: 'src/a.ts' });
+      stream.broadcastEvent('worker.started', { filePath: 'src/a.ts' }, { id: 7, timestamp: new Date() });
       const second = decoder.decode((await reader.read()).value);
       assert.match(second, /^event: migration\ndata: /);
-      assert.deepEqual(JSON.parse(second.split('data: ')[1]).payload, { filePath: 'src/a.ts' });
+      const frame = JSON.parse(second.split('data: ')[1]);
+      assert.equal(frame.id, 7);
+      assert.deepEqual(frame.payload, { filePath: 'src/a.ts' });
 
       controller.abort();
       for (let i = 0; i < 50 && stream.clientCount > 0; i += 1) {

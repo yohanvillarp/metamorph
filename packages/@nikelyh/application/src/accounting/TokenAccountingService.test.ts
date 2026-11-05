@@ -25,7 +25,9 @@ class MockStateRepository implements StateRepository {
   }
   async getAllPlans(): Promise<MigrationPlan[]> { return []; }
   async updateTaskStatus(_planId: string, _filePath: string, _status: TaskStatus): Promise<void> {}
-  async logEvent(_eventName: string, _payload: Record<string, unknown>): Promise<void> {}
+  async logEvent(_eventName: string, _payload: Record<string, unknown>): Promise<{ id: number; timestamp: Date }> {
+    return { id: 0, timestamp: new Date() };
+  }
   async getEvents(): Promise<any[]> { return []; }
 
   async recordTokenUsage(record: TokenUsageRecord): Promise<void> {

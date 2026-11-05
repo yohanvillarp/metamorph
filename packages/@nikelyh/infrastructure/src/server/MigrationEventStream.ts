@@ -1,9 +1,16 @@
 import type { Response } from 'express';
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
+const MAX_BUFFERED_BYTES = 1024 * 1024;
 
 /** Why the plan list changed; lets the dashboard decide how much to re-fetch. */
 export type PlanChangeReason = 'saved' | 'task' | 'reset';
+
+/** Identity of the persisted row backing a broadcast event. */
+export interface PersistedEventRef {
+  id: number;
+  timestamp: Date;
+}
 
 /**
  * Server-Sent Events broadcaster for migration activity.
@@ -15,7 +22,10 @@ export class MigrationEventStream {
   private readonly clients = new Set<Response>();
   private heartbeat: NodeJS.Timeout | null = null;
 
-  constructor(private readonly heartbeatIntervalMs: number = HEARTBEAT_INTERVAL_MS) {}
+  constructor(
+    private readonly heartbeatIntervalMs: number = HEARTBEAT_INTERVAL_MS,
+    private readonly maxBufferedBytes: number = MAX_BUFFERED_BYTES
+  ) {}
 
   /**
    * Register a new SSE client connection.
@@ -44,9 +54,16 @@ export class MigrationEventStream {
   /**
    * Broadcast a persisted semantic event. Maps to the SSE `migration` event
    * so clients can subscribe selectively via EventSource.addEventListener().
+   * Carries the stored row's id and timestamp so clients can deduplicate
+   * against REST hydration instead of inventing ids of their own.
    */
-  broadcastEvent(eventName: string, payload: Record<string, unknown>): void {
-    this.send('migration', { eventName, payload, timestamp: new Date().toISOString() });
+  broadcastEvent(eventName: string, payload: Record<string, unknown>, persisted: PersistedEventRef): void {
+    this.send('migration', {
+      id: persisted.id,
+      eventName,
+      payload,
+      timestamp: persisted.timestamp.toISOString(),
+    });
   }
 
   /**
@@ -86,10 +103,18 @@ export class MigrationEventStream {
     }
   }
 
-  /** Write to one client, evicting it if the connection is already gone. */
+  /** Write to one client, evicting it if the connection is gone or hopelessly behind. */
   private write(client: Response, chunk: string): void {
     if (client.destroyed || client.writableEnded) {
       this.removeClient(client);
+      return;
+    }
+    // A consumer that stops reading makes every write queue in process memory.
+    // Past the cap, drop the connection; EventSource reconnects and the
+    // dashboard re-syncs over REST, so nothing is lost but the backlog.
+    if (client.writableLength > this.maxBufferedBytes) {
+      this.removeClient(client);
+      client.destroy();
       return;
     }
     try {

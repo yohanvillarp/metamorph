@@ -20,12 +20,17 @@ export const MAX_EVENTS = 2000;
 export const OFFLINE_AFTER_FAILURES = 3;
 
 function appendEvent(events: MigrationEventItem[], event: SSEMigrationEvent): MigrationEventItem[] {
-  // Hydration leaves events oldest-first; a streamed one belongs at the end.
-  // The store assigns ids sequentially, so the next id follows the newest we
-  // hold until the next hydration replaces it with the persisted row.
+  // Events are held oldest-first and ids come from the database, so a
+  // streamed id at or below the newest held one is already in the list
+  // (it arrived through both the stream and a REST refresh).
   const newest = events[events.length - 1];
-  const id = newest ? newest.id + 1 : 1;
-  return [...events, { ...event, id }].slice(-MAX_EVENTS);
+  if (newest && event.id <= newest.id) return events;
+  return [...events, event].slice(-MAX_EVENTS);
+}
+
+/** Re-applies events streamed while a REST snapshot was in flight; ids the snapshot already contains are skipped. */
+function mergeStreamed(hydrated: MigrationEventItem[], streamed: MigrationEventItem[]): MigrationEventItem[] {
+  return streamed.reduce(appendEvent, hydrated);
 }
 
 /** Interval polling whose cadence can be switched; start/stop are idempotent. */
@@ -75,20 +80,29 @@ export function useMigrationEvents() {
   const [isServerOffline, setIsServerOffline] = useState(false);
 
   const consecutiveFailuresRef = useRef(0);
+  const inFlightFetchesRef = useRef(0);
+  const streamedDuringFetchRef = useRef<MigrationEventItem[]>([]);
 
   const markOnline = useCallback(() => {
     consecutiveFailuresRef.current = 0;
     setIsServerOffline(false);
   }, []);
 
+  /** Appends a streamed event, remembering it while a REST refresh is in flight so a stale snapshot cannot erase it. */
+  const appendStreamedEvent = useCallback((event: MigrationEventItem) => {
+    if (inFlightFetchesRef.current > 0) streamedDuringFetchRef.current.push(event);
+    setEvents((prev) => appendEvent(prev, event));
+  }, []);
+
   const fetchData = useCallback(async () => {
+    inFlightFetchesRef.current += 1;
     try {
       const [plansData, eventsData] = await Promise.all([
         apiClient.getPlans(),
         apiClient.getEvents(),
       ]);
       setPlans(plansData);
-      setEvents(eventsData.reverse());
+      setEvents(mergeStreamed(eventsData.reverse(), streamedDuringFetchRef.current));
       markOnline();
     } catch (error) {
       consecutiveFailuresRef.current += 1;
@@ -96,6 +110,9 @@ export function useMigrationEvents() {
         setIsServerOffline(true);
       }
       console.error('Error fetching dashboard data:', error);
+    } finally {
+      inFlightFetchesRef.current -= 1;
+      if (inFlightFetchesRef.current === 0) streamedDuringFetchRef.current = [];
     }
   }, [markOnline]);
 
@@ -120,7 +137,7 @@ export function useMigrationEvents() {
         // Catch up on anything persisted while the stream was down.
         if (wasInterrupted) fetchData();
       },
-      onEvent: (event) => setEvents((prev) => appendEvent(prev, event)),
+      onEvent: appendStreamedEvent,
       onPlanChange: (change) => {
         if (change.reason === 'reset') fetchData();
         else refreshPlans();
@@ -136,7 +153,7 @@ export function useMigrationEvents() {
       stopPolling();
       cancelPlanRefresh();
     };
-  }, [fetchData, startPolling, stopPolling, refreshPlans, cancelPlanRefresh, markOnline]);
+  }, [fetchData, appendStreamedEvent, startPolling, stopPolling, refreshPlans, cancelPlanRefresh, markOnline]);
 
   return { plans, events, isServerOffline, fetchData };
 }

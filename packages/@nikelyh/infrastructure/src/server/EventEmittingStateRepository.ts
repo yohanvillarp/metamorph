@@ -33,9 +33,10 @@ export class EventEmittingStateRepository implements StateRepository {
     this.stream.broadcastPlanChange('task', planId);
   }
 
-  async logEvent(eventName: string, payload: Record<string, unknown>): Promise<void> {
-    await this.inner.logEvent(eventName, payload);
-    this.stream.broadcastEvent(eventName, payload);
+  async logEvent(eventName: string, payload: Record<string, unknown>): Promise<{ id: number; timestamp: Date }> {
+    const persisted = await this.inner.logEvent(eventName, payload);
+    this.stream.broadcastEvent(eventName, payload, persisted);
+    return persisted;
   }
 
   getEvents(): ReturnType<StateRepository['getEvents']> {
