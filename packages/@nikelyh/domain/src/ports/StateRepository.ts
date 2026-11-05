@@ -30,8 +30,10 @@ export interface StateRepository {
   /**
    * Saves a semantic event into the persistent history.
    * Vital for drawing timelines in the Web dashboard.
+   * Resolves with the persisted row's identity so callers can reference
+   * the stored event (e.g. for deduplication on live consumers).
    */
-  logEvent(eventName: string, payload: Record<string, unknown>): Promise<void>;
+  logEvent(eventName: string, payload: Record<string, unknown>): Promise<{ id: number; timestamp: Date }>;
 
   /**
    * Retrieves all logged events.

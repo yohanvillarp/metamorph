@@ -245,12 +245,14 @@ export class SQLiteStateStore implements StateRepository {
     stmt.run(planId, filePath, status, error || null);
   }
 
-  async logEvent(eventName: string, payload: Record<string, unknown>): Promise<void> {
+  async logEvent(eventName: string, payload: Record<string, unknown>): Promise<{ id: number; timestamp: Date }> {
+    const timestamp = new Date();
     const stmt = this.db.prepare(`
       INSERT INTO events (event_name, payload_json, timestamp)
       VALUES (?, ?, ?)
     `);
-    stmt.run(eventName, JSON.stringify(payload), new Date().toISOString());
+    const result = stmt.run(eventName, JSON.stringify(payload), timestamp.toISOString());
+    return { id: Number(result.lastInsertRowid), timestamp };
   }
 
   async getAllPlans(): Promise<MigrationPlan[]> {

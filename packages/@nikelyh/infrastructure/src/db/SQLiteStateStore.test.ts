@@ -236,4 +236,17 @@ describe('SQLiteStateStore', () => {
     assert.equal(summary.totalTokens, 600);
     assert.equal(summary.totalCostUsd, 0);
   });
+
+  test('logEvent returns the persisted row id and timestamp matching getEvents', async () => {
+    const { store } = createTestStore();
+    const first = await store.logEvent('migration.started', { runId: 'run-1' });
+    const second = await store.logEvent('worker.started', { filePath: 'src/a.ts' });
+    assert.equal(second.id, first.id + 1);
+
+    const events = await store.getEvents();
+    const persisted = events.find((e) => e.id === second.id);
+    assert.ok(persisted);
+    assert.equal(persisted.eventName, 'worker.started');
+    assert.equal(persisted.timestamp.toISOString(), second.timestamp.toISOString());
+  });
 });

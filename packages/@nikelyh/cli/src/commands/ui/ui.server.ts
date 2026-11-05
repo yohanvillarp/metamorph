@@ -13,6 +13,8 @@ import {
   createRunBuildTool,
   createApiServer,
   ConfigStore,
+  MigrationEventStream,
+  EventEmittingStateRepository,
 } from '@nikelyh/infrastructure';
 import { MigrationRunner } from '@nikelyh/application';
 import { hasLlmCredentials, presentMissingApiKey } from '../run/run.presenter';
@@ -44,17 +46,19 @@ export async function startUiServer(desiredPort: number): Promise<void> {
     }
 
     const resolvedConfig = ConfigStore.resolveConfig();
-    const store = new SQLiteStateStore('.metamorph');
+    const eventStream = new MigrationEventStream();
+    const store = new EventEmittingStateRepository(new SQLiteStateStore('.metamorph'), eventStream);
     const shadowBase = path.resolve('.metamorph/shadow');
     const tools = createUiTools(shadowBase);
     const runner = new MigrationRunner(store, tools, resolvedConfig);
-    const app = await createApiServer(store, runner);
+    const app = await createApiServer(store, runner, eventStream);
 
     app.listen(port, () => {
       spinner.succeed(`Metamorph UI running on http://localhost:${port}`);
       console.log(chalk.blue(`\nEndpoints available:`));
       console.log(chalk.gray(`  GET  /api/plans`));
       console.log(chalk.gray(`  GET  /api/events`));
+      console.log(chalk.gray(`  GET  /api/events/stream`));
       console.log(chalk.gray(`  POST /api/migrations/start`));
       console.log(chalk.gray(`  POST /api/migrations/rollback`));
       open(`http://localhost:${port}`);
