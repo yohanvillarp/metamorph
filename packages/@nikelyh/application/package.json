@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "type": "module",
   "dependencies": {
-    "@mozaik-ai/core": "^4.1.0",
+    "@mozaik-ai/core": "^4.2.0",
     "@nikelyh/domain": "*",
     "@nikelyh/infrastructure": "*"
   },
