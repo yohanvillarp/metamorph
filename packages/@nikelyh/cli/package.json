@@ -34,7 +34,7 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.7.3",
+    "@inquirer/prompts": "^8.8.1",
     "@mozaik-ai/core": "^4.2.0",
     "chalk": "^6.0.1",
     "commander": "^15.0.0",
